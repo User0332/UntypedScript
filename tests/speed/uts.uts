@@ -1,0 +1,15 @@
+// yeah this isn't really a good test but the language just doesn't have too many features at this point in time
+
+import printf from "<libc>"
+
+const other = () => {
+    return "ok"
+}
+
+const main = () => {
+    printf("%s%s%s%s%s%s%s", other(), other(), other(), other(), other(), other(), other())
+
+    return 0+0+0+0+0+0-0-0-0-0-0-0
+}
+
+export main
