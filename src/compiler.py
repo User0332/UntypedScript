@@ -194,7 +194,8 @@ class FunctionCompiler(Compiler):
 				self.outer.hidden_counter+=1
 			elif key.startswith("String Literal"):
 				strname = f"string.{self.outer.hidden_counter}"
-				self.outer.datainstr(f"{strname} db `{node}`, 0")
+				node = ', '.join(str(ord(c)) for c in node)
+				self.outer.datainstr(f"{strname} db {node}, 0")
 				self.instr(f"mov eax, {strname}")
 
 				self.outer.hidden_counter+=1

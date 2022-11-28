@@ -1,10 +1,14 @@
 import puts from "<libc>"
 import printf from "<libc>"
 
+const my_other_func = () => 0
+
 const main = () => {
 	const x = 5
 	puts("Hello, World!")
-	printf("x is equal to... %d", x)
+	printf("x is equal to... %d\n", x)
+
+	printf("my other func always returns %d???\n", my_other_func())
 
 	return 0
 }
