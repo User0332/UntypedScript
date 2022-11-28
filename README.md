@@ -16,4 +16,17 @@ const main = () => {
 export main
 ```
 
-Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`!
+Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`! (You need NASM and MinGW installed)
+
+## Next on the list to do:
+
+- Imports/Modules
+- Function receiving arguments
+- Refs/Derefs/Pointers
+- If/Elif/Else Statements
+- Namespaces
+- Object creation syntax
+- Object utils/dynamic objects
+- Object integration with C structs
+- Object destructuring
+- Maybe type hinting or a VSCode extension
