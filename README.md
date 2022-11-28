@@ -9,11 +9,11 @@ import puts from "<libc>"
 
 const main = () => {
     puts("Hello World!")
+
+    return 0
 }
 
 export main
 ```
-
-Note that `return` is not implemented yet, but will be in the near future.
 
 Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`!

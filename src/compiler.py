@@ -88,13 +88,17 @@ class Compiler:
 			if key.startswith("Expression"):
 				self.traverse(node)
 			elif key.startswith("Import"):
+				name = node["name"]
+				module = node["module"]
 				# check for file/module, for now, just pass libc
-				if node["module"] != "<libc>":
+				if module != "<libc>":
 					code = get_code(self.source, node["index"])
 
-					throw(f"UTSC 020: Module '{node['module']}' doesn't exist!", code)
+					throw(f"UTSC 020: Module '{module}' doesn't exist!", code)
 
-				self.topinstr(f"extern _{node['name']}")
+				self.topinstr(f"extern _{name}")
+
+				self.symbols.declare(name, "CONST", 4, f"_{name}")
 			elif key.startswith("Export"):
 				self.topinstr(f"global _{node}")
 			elif key.startswith("Variable Declaration"):
@@ -104,6 +108,8 @@ class Compiler:
 			elif key.startswith("Variable Assignment"):
 				code = get_code(self.source, node["index"])
 				throw("UTSC 023: Assingments not allowed in global scope.", code)
+			else:
+				throw("UTSC 025: Unimplemented or Invalid AST Node... ?")
 
 		return self.asm
 	#
@@ -111,8 +117,6 @@ class Compiler:
 
 class FunctionCompiler(Compiler):
 	def __init__(self, params: list[str], body: dict, code: str, outer: Compiler):
-		self.prolog = ""
-		self.epilog = ""
 		self.text = ""
 		self.body = body
 		self.allocated_bytes = 0
@@ -163,6 +167,9 @@ class FunctionCompiler(Compiler):
 					self.generate_expression(node)
 					self.instr("neg eax")
 			elif key.startswith("Numerical Constant"):
+				if node == 0:
+					self.instr(f"xor eax, eax")
+					continue
 				self.instr(f"mov eax, {node}")
 			elif key.startswith("Variable Reference"):
 				# FIX: this throws error if var doesn't exist...
@@ -199,7 +206,7 @@ class FunctionCompiler(Compiler):
 		args: list[dict] = node["arguments"]
 		index: int = node["index"]
 
-		#self.symbols.get(name, index) # make sure func exists
+		self.symbols.get(name, index) # make sure func exists
 
 		for arg in args[::-1]: # reverse args
 			self.generate_expression(arg)
@@ -250,6 +257,18 @@ class FunctionCompiler(Compiler):
 
 		self.instr(f"mov [{memaddr}], eax")
 
+	def generate_epilog(self):
+		return f"add esp, {self.allocated_bytes+8}\n\tpop esi\n\tpop ebx\n\tret"
+
+	def generate_prolog(self):
+		return f"push ebx\n\tpush esi\n\tsub esp, {self.allocated_bytes+8}"
+
+	def return_val(self, expr: dict):
+		if expr is None: self.instr("xor eax, eax")
+		else: self.generate_expression(expr) # this auto places the val in eax
+
+		self.instr(self.generate_epilog()) # place epilog here
+
 	#Traverses the AST and passes off each node to a specialized function
 	def traverse(self, top: dict=None):
 		key: str; node: dict
@@ -267,9 +286,9 @@ class FunctionCompiler(Compiler):
 				self.assign_variable(node)
 			elif key.startswith("Function Call"):
 				self.call_func(node)
+			elif key.startswith("Return Statement"):
+				self.return_val(node)
+			else:
+				throw("UTSC 025: Unimplemented or Invalid AST Node... ?")
 
-		#make prolog and epilog
-		self.prolog = f"push ebx\n\tpush esi\n\tsub esp, {self.allocated_bytes+8}"
-		self.epilog = f"add esp, {self.allocated_bytes+8}\n\tpop esi\n\tpop ebx"
-
-		return f"\t{self.prolog}\n\t{self.text}\n\t{self.epilog}"
+		return f"\t{self.generate_prolog()}\n\t{self.text}\n\t{self.generate_epilog()}"

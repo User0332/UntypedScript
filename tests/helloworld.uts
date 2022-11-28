@@ -5,6 +5,8 @@ const main = () => {
 	const x = 5
 	puts("Hello, World!")
 	printf("x is equal to... %d", x)
+
+	return 0
 }
 
 export main

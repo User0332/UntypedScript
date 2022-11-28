@@ -110,6 +110,13 @@ class FunctionCallNode(Node):
 	def __repr__(self):
 		return f'{{"Function Call" : {{"name" : "{self.name}", "arguments" : {self.args}, "index" : {self.idx} }} }}'
 
+class FunctionReturnStatement(Node):
+	def __init__(self, expr: dict):
+		self.expr = expr if expr else "null"
+
+	def __repr__(self):
+		return f'{{ "Return Statement": {self.expr} }}'
+
 class ImportNode(Node):
 	def __init__(self, modname: str, name: str, idx: int):
 		self.modname = modname
@@ -132,6 +139,7 @@ class Parser:
 	def __init__(self, tokens, code):
 		self.tokens = tokens
 		self.code = code
+		self.func = False
 		self.idx = -1
 		self.advance()
 
@@ -173,7 +181,7 @@ class Parser:
 	#gets blocks of code in between curly braces
 	def get_body(self):
 		body = {}
-		while self.current.value != "}":
+		while self.current.value != "}":				
 			expr = str(self.expr())
 
 			expr = "{}" if expr == "None" else expr
@@ -357,7 +365,9 @@ class Parser:
 				if self.current.value == '{':
 					self.advance()
 
+					self.func = True
 					func_body = self.get_body()
+					self.func = False
 				else:
 					expr = self.expr()
 
@@ -372,7 +382,7 @@ class Parser:
 						return UnimplementedNode()
 
 					func_body = {
-						f"Expression @Idx[{self.current.idx}]": loads(str(expr))
+						f"Return Statement": loads(str(expr))
 					}
 
 				return AnonymousFunctionNode(parameters, func_body)
@@ -380,6 +390,12 @@ class Parser:
 		elif current.value == "if":
 			self.advance()
 			return self.conditional_expr()
+
+		elif self.func and self.current.type == "RETURN":
+			self.advance()
+			expr = self.expr()
+
+			return FunctionReturnStatement(expr)
 
 		code = get_code(self.code, self.current.idx)
 		
