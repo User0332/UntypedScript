@@ -16,7 +16,7 @@ const main = () => {
 export main
 ```
 
-Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`! (You need NASM and MinGW installed)
+Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`! (You need NASM and MinGW installed - currently only tested on Windows)
 
 ## Next on the list to do:
 
