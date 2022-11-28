@@ -139,7 +139,7 @@ class Parser:
 	def __init__(self, tokens, code):
 		self.tokens = tokens
 		self.code = code
-		self.func = False
+		self.in_func = []
 		self.idx = -1
 		self.advance()
 
@@ -365,9 +365,9 @@ class Parser:
 				if self.current.value == '{':
 					self.advance()
 
-					self.func = True
+					self.in_func.append(None) # use an array/stack structure to keep track of inner function scopes
 					func_body = self.get_body()
-					self.func = False
+					self.in_func.pop()
 				else:
 					expr = self.expr()
 
@@ -391,11 +391,58 @@ class Parser:
 			self.advance()
 			return self.conditional_expr()
 
-		elif self.func and self.current.type == "RETURN":
+		elif self.in_func and self.current.type == "RETURN":
 			self.advance()
 			expr = self.expr()
 
 			return FunctionReturnStatement(expr)
+		elif self.current.type == "EXPORT" and not self.in_func:
+			self.advance()
+
+			if self.current.type != "IDENTIFIER":
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 018: Expected identifier, got {fmt_type(self.current.type)}", code)
+				return UnimplementedNode()
+
+			name = self.current.value
+
+			self.advance()
+			
+			return ExportNode(name)
+
+		elif self.current.type == "IMPORT" and not self.in_func:
+			self.advance()
+			
+			if self.current.type != "IDENTIFIER":
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 018: Expected identifier, got {fmt_type(self.current.type)}", code)
+				return UnimplementedNode()
+
+			name = self.current.value
+
+			self.advance()
+
+			if self.current.type != "FROM":
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 018: Expected 'from', got {self.current.value!r}", code)
+				return UnimplementedNode()
+
+			self.advance()
+
+			if self.current.type != "STRING":
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 018: Expected module name, got {self.current.value!r}", code)
+				return UnimplementedNode()
+
+			modnode = self.current
+
+			self.advance()
+
+			return ImportNode(modnode.value, name, modnode.idx)
 
 		code = get_code(self.code, self.current.idx)
 		
@@ -501,6 +548,7 @@ class Parser:
 			elif self.current.value == "=":
 				self.advance()
 				expr = self.expr()
+
 				if expr is None:
 					self.decrement()
 
@@ -513,6 +561,7 @@ class Parser:
 				else:
 					return VariableDefinitionNode(vartype, name, expr, self.current.idx)
 			else:
+				print(self.current)
 				code = get_code(self.code, self.current.idx)
 				
 				throw(f"UTSC 018: Expected '=' or <newline>, got {fmt_type(self.current.type)}", code)
@@ -539,55 +588,6 @@ class Parser:
 					return VariableAssignmentNode(name, expr, self.current.idx)
 			else:
 				self.decrement() #move index pointer back to the identifier
-
-		elif self.current.type == "EXPORT":
-			self.advance()
-
-			if self.current.type != "IDENTIFIER":
-				code = get_code(self.code, self.current.idx)
-
-				throw(f"UTSC 018: Expected identifier, got {fmt_type(self.current.type)}", code)
-				return UnimplementedNode()
-
-			name = self.current.value
-
-			self.advance()
-			
-			return ExportNode(name)
-
-		elif self.current.type == "IMPORT":
-			self.advance()
-			
-			if self.current.type != "IDENTIFIER":
-				code = get_code(self.code, self.current.idx)
-
-				throw(f"UTSC 018: Expected identifier, got {fmt_type(self.current.type)}", code)
-				return UnimplementedNode()
-
-			name = self.current.value
-
-			self.advance()
-
-			if self.current.type != "FROM":
-				code = get_code(self.code, self.current.idx)
-
-				throw(f"UTSC 018: Expected 'from', got {self.current.value!r}", code)
-				return UnimplementedNode()
-
-			self.advance()
-
-			if self.current.type != "STRING":
-				code = get_code(self.code, self.current.idx)
-
-				throw(f"UTSC 018: Expected module name, got {self.current.value!r}", code)
-				return UnimplementedNode()
-
-			modnode = self.current
-
-			self.advance()
-
-			return ImportNode(modnode.value, name, modnode.idx)
-
 		elif self.current.type == "NEWLINE":
 			return None
 

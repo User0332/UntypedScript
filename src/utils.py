@@ -108,7 +108,7 @@ class Token:
 		return str(self.type)+" -> "+str(self.value)
 
 	def __str__(self):
-		return str([self.type, self.value])
+		return str([self.value, self.type])
 
 class TokenSorter:
 	def __init__(self, tokens: list):
@@ -195,17 +195,4 @@ class SymbolTable:
 
 	def delete(self, name):
 		del self.symbols[name]
-
-class TypeTable:
-	def __init__(self):
-		self.symbols: dict = {}
-
-	def add(self, name, dtype):
-		self.symbols[name] = dtype
-
-	def get(self, name):
-		return self.symbols.get(name, None)
-
-	def remove(self, name):
-		self.symbols.pop(name, None)
 #

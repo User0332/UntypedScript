@@ -1,0 +1,11 @@
+// we have to say this is from libc (even though it isn't) because the compiler currently doesn't search for any libraries
+import STRING_CONSTANT from "<libc>"
+import puts from "<libc>"
+
+const main = () => {
+    puts(STRING_CONSTANT)
+
+    return 0
+}
+
+export main

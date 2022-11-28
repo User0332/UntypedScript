@@ -22,9 +22,9 @@ class Lexer():
 
 		working_code = self.source_code
 
-		comments = re_finditer("^#.*$", working_code, RE_MULTILINE)
+		comments = re_finditer("^//.*$", working_code, RE_MULTILINE)
 		for comment in comments:
-			working_code = working_code.replace(comment.group(), " "*len(comment.group()), 1)
+			working_code = working_code.replace(comment.group(0), " "*len(comment.group()), 1)
 
 		keywds = [
 			["^import\s|\simport\s", "IMPORT", RE_MULTILINE],
@@ -50,7 +50,7 @@ class Lexer():
 			*keywds,
 			["[a-z_]\w*", "IDENTIFIER", RE_IGNORECASE],
 			["\d+", "INTEGER"],
-			["\n", "NEWLINE"]
+			['\n', "NEWLINE"]
 		]
 
 		for regex in regexes:
@@ -58,8 +58,8 @@ class Lexer():
 
 			for match in matches:
 				start = match.start()+1 if regex in keywds else match.start()
-				group = match.group().strip()
-				tokens.append([regex[1], group, start])
+				group = match.group().strip('\n') # leave newline in for newline regex match
+				tokens.append([regex[1], group.strip(), start])
 				working_code = working_code.replace(group, " "*len(group), 1)
 
 		unlexed = "".join(working_code.split())

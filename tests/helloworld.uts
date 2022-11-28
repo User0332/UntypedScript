@@ -5,10 +5,17 @@ const my_other_func = () => 0
 
 const main = () => {
 	const x = 5
+
+	const inner_function = () => {
+		puts("this is in an inner function!")
+		return "this string!"
+	}
+
 	puts("Hello, World!")
 	printf("x is equal to... %d\n", x)
 
 	printf("my other func always returns %d???\n", my_other_func())
+	printf("inner function returns '%s'...\n", inner_function())
 
 	return 0
 }

@@ -67,13 +67,18 @@ class Compiler:
 
 			self.instr(f"_{name}:")
 			self.instr(func_code)
+		elif value.get("String Literal") is not None:
+			value = ', '.join(str(ord(c)) for c in value["String Literal"])
+
+			self.datainstr(f"_{name} db {value}, 0")
 		else:
 			try: value = eval(self.evaluator.simplify_numerical_expression(value))
 			except NonConstantNumericalExpressionException:
 				code = get_code(self.source, index)
-				throw("UTSC 022: Only constant numerical/function values allowed in global scope", code)
+				throw("UTSC 022: Only constant numerical/function/string values allowed in global scope", code)
 
 			self.datainstr(f"_{name} db {value}")
+
 		self.symbols.declare(name, dtype, 4, f"_{name}")
 		self.symbols.assign(name, value, index)
 	#
@@ -176,13 +181,13 @@ class FunctionCompiler(Compiler):
 				name = node["name"]
 				index  = node["index"]
 
-				memaddr =  self.symbols.get(name, index)["address"]
+				memaddr = self.symbols.get(name, index)["address"]
 				self.instr(f"mov eax, [{memaddr}]")
 			elif key.startswith("Anonymous Function"):
 				params: list[str] = node["parameters"]
 				body: dict = node["body"]
 
-				func = FunctionCompiler(params, body, self.source)
+				func = FunctionCompiler(params, body, self.source, self.outer)
 				func_asm_body = func.traverse()
 				func_name = f"anonymous.{self.outer.hidden_counter}"
 
@@ -207,13 +212,16 @@ class FunctionCompiler(Compiler):
 		args: list[dict] = node["arguments"]
 		index: int = node["index"]
 
-		self.symbols.get(name, index) # make sure func exists
+		addr: str = self.symbols.get(name, index)["address"] # make sure func exists
+
+		if addr.startswith("esp"): # if addr stored on stack ptr, dereference the ptr
+			addr = f"[{addr}]"
 
 		for arg in args[::-1]: # reverse args
 			self.generate_expression(arg)
 			self.instr("push eax")
 
-		self.instr(f"call _{name}")
+		self.instr(f"call {addr}")
 		self.instr(f"add esp, {4*len(args)}")
 
 
