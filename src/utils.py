@@ -155,7 +155,7 @@ class SymbolTable:
 		self.parent: SymbolTable = parent
 		self.code = code
 
-	def get(self, name, index):
+	def get(self, name, index) -> dict:
 		attr = self.symbols.get(name, None)
 		if attr is None:
 			if self.parent:
@@ -167,15 +167,15 @@ class SymbolTable:
 		
 		return attr
 
-	def declare(self, name, dtype, size, address):
+	def declare(self, name: str, dtype: str, sizeb: int, address: str):
 		self.symbols[name] = {
 			"type" : dtype, 
-			"size" : size, 
+			"size" : sizeb, 
 			"address" : address, 
 			"value" : None
-			}
+		}
 
-	def assign(self, name, value, index):
+	def assign(self, name: str, value, index: int):
 		if name not in self.symbols.keys():
 			
 			line, idx, linenum = strgetline(self.code, index)
@@ -193,6 +193,6 @@ class SymbolTable:
 		self.symbols[name]["value"] = value
 		return self.symbols[name]["address"]
 
-	def delete(self, name):
+	def delete(self, name: str):
 		del self.symbols[name]
 #

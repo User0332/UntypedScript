@@ -1,0 +1,26 @@
+import { printf, malloc, free } from "<libc>"
+
+const main = () => {
+	const buffer = malloc(4) // 4 byte buffer
+	deref (buffer) = 123456 // move 32-bit int into memory
+	
+	printf("Number: %i", deref (buffer))
+
+	free(buffer)
+}
+
+const _main = () => {	
+	// OR... instead of calling malloc(), use stackalloc keywords
+	// where the compiler does it for you
+
+	const buffer = stackalloc (4)
+	deref (buffer) = 123456
+
+	printf("Number: %i", deref (buffer))
+
+	// no need to free the buffer - on return, the compiler
+	// adds the necessary bytes to esp to realign the stack properly
+	// however, you can do this yourself if you want
+	stackfree (buffer)
+
+}

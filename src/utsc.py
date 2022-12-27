@@ -168,12 +168,16 @@ def main():
 	if warnings: printwarnings()
 	checkfailure()
 
-	compiler = Compiler(raw_ast, code)
+	compiler = Compiler(raw_ast, code, COMPILER_EXE_PATH, INPUT_FILE_PATH)
 	asm = compiler.traverse()
 
 	if compile_optimizations >= 2:
 		optimizer = AssemblyOptimizer(asm)
 		asm = optimizer.optimize()
+
+	throwerrors()
+	if warnings: printwarnings()
+	checkfailure()
 
 	if show in ("dis", "disassemble", "disassembly", "asm", "assembly", "all"):
 		print("Disassembly:\n")
@@ -183,10 +187,6 @@ def main():
 		with open(out, "w") as f:
 			f.write(asm)
 
-	throwerrors()
-	if warnings: printwarnings()
-	checkfailure()
-
 	if executable:
 		try:
 			subprocess_call(["powershell", f"{COMPILER_EXE_PATH}/assemble.ps1", out.removesuffix(".asm")])
@@ -194,7 +194,6 @@ def main():
 			throw("UTSC 022: assemble.bat is missing, destroyed, or broken")
 
 	throwerrors()
-	if warnings: printwarnings()
 	checkfailure()
 
 	return 0

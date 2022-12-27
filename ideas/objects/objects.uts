@@ -1,0 +1,91 @@
+import puts from "<libc>"
+
+const main = () => {
+	const obj = {
+		property: "super cool!"
+	}
+
+	puts(obj.property)
+
+	obj.property = "ok"
+}
+
+// would be ... (obj is actually just a buffer)
+
+const _main = () => {
+	const obj = [
+		// "get" method
+		(this, name) => {
+			if (name == "property") {
+				return deref (this+8) // addr+8 is the 3rd element in the array
+			}
+		},
+		// "set" method
+		(this, name, value) => {
+			if (name == "property") {
+				deref (this+8) = value 
+			}
+		},
+		"super cool!", // this is where the actual property value is in the buffer
+	]
+
+	// deref the functions in the obj array and call them with corresponding args
+	puts(
+		deref (obj[0])(obj, "property") // deref is a future keyword, NOT a function
+	) // what obj.property would essentially be
+
+	deref (obj[1])(obj, "property", "ok") // setting property (obj.property = "ok")
+}
+
+// obj would look like:
+// [ [ptr to get function] [ptr to set function] [ptr to "super cool!"] ]
+
+//objects with special _inner prop that returns the actual obj buffer
+
+const __main = () => {
+	const obj = {
+		property: "super cool!"
+	}
+	
+	puts(
+		// obj._inner[0] is the get method
+		obj._inner[0](obj, "property")
+	)
+
+	puts(
+		// obj._inner[2] is the location of obj.property in the buffer
+		obj._inner[2]
+	)
+
+	// behavior if _inner is overriden
+	const _obj = {
+		property: "super cool",
+		_inner: "changed it!"
+	}
+
+	puts(_obj._inner) // prints out "changed it!"
+}
+
+const ___main = () =>  { // adding properties
+	let obj = {
+		property: "super cool"
+	}
+
+	obj.other_prop = "also super cool!" // illegal
+
+	// since these are buffers, they need to be resized
+	// the object would have to be resized, get() would have to be redeclared, 
+	// and the property value appended to the end of the buffer, in the reallocated space
+
+	// maybe syntax sugar will be added in the future so that obj.other_prop = {value} is possible
+	// this operation is super slow anyway ...
+	// better if maybe replaced with this (same speed though):
+
+	obj = { // obj needs to be let to add props
+		property: obj.property, // this access will take the previous object's property
+		other_prop: "also super cool!"
+	}
+}
+
+// hopefully multiple exports are implemented by now
+export { main, _main, __main, ___main }

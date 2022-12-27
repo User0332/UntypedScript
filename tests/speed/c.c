@@ -1,13 +1,13 @@
-#include <stdio.h>
+extern int printf(const char*, ...);
 
 char* other()
 {
-    return "ok";
+	return "ok";
 }
 
 int main()
 {
-    printf("%s%s%s%s%s%s%s", other(), other(), other(), other(), other(), other(), other());
+	printf("%s%s%s%s%s%s%s", other(), other(), other(), other(), other(), other(), other());
 
-    return 0+0+0+0+0+0-0-0-0-0-0-0;
+	return 0+0+0+0+0+0-0-0-0-0-0-0;
 }

@@ -7,8 +7,10 @@ from utils import (
 
 from ast_preprocessor import SyntaxTreePreproccesor
 
+from os.path import isfile
+
 class Compiler:
-	def __init__(self, ast: dict, code: str):
+	def __init__(self, ast: dict, code: str, compiler_path: str, file_path: str):
 		self.ast = ast
 		self.top = ""
 		self.text = "section .text"
@@ -18,6 +20,8 @@ class Compiler:
 		self.evaluator = SyntaxTreePreproccesor(ast)
 		self.source = code
 		self.hidden_counter = 0
+		self.compiler_path = compiler_path
+		self.file_path = file_path
 
 	@property
 	def asm(self) -> str:
@@ -83,6 +87,19 @@ class Compiler:
 		self.symbols.assign(name, value, index)
 	#
 
+	def import_module(self, node: dict):
+		name = node["name"]
+		module = node["module"]
+
+		if ((not isfile(f"{self.compiler_path}/lib/{name}.asm")) or (not isfile(f"{self.file_path}/{name}.asm"))) and (module != "<libc>"):
+			code = get_code(self.source, node["index"])
+
+			throw(f"UTSC 020: Module '{module}' doesn't exist!", code)
+
+		self.topinstr(f"extern _{name}")
+
+		self.symbols.declare(name, "CONST", 4, f"_{name}")
+
 	#Traverses the AST and passes off each node to a specialized function
 	def traverse(self, top: dict=None):
 		key: str; node: dict
@@ -93,17 +110,7 @@ class Compiler:
 			if key.startswith("Expression"):
 				self.traverse(node)
 			elif key.startswith("Import"):
-				name = node["name"]
-				module = node["module"]
-				# check for file/module, for now, just pass libc
-				if module != "<libc>":
-					code = get_code(self.source, node["index"])
-
-					throw(f"UTSC 020: Module '{module}' doesn't exist!", code)
-
-				self.topinstr(f"extern _{name}")
-
-				self.symbols.declare(name, "CONST", 4, f"_{name}")
+				self.import_module(node)
 			elif key.startswith("Export"):
 				self.topinstr(f"global _{node}")
 			elif key.startswith("Variable Declaration"):
@@ -112,7 +119,7 @@ class Compiler:
 				self.define_variable(node)
 			elif key.startswith("Variable Assignment"):
 				code = get_code(self.source, node["index"])
-				throw("UTSC 023: Assingments not allowed in global scope.", code)
+				throw("UTSC 023: Assignments not allowed in global scope.", code)
 			else:
 				throw("UTSC 025: Unimplemented or Invalid AST Node... ?")
 
@@ -128,12 +135,33 @@ class FunctionCompiler(Compiler):
 		self.symbols = SymbolTable(code, outer.symbols)
 		self.source = code
 		self.outer = outer
+		self.params = params
+		self.post_prolog = ""
 
-		for param in params:
-			pass # declare each param in func scope
+		for param in params[::-1]: # reserve space for each arg
+			addr = f"ebp-{self.allocated_bytes}"
+
+			self.symbols.declare(param, "LET", 4, addr)
+
+			self.allocated_bytes+=4
 
 	def instr(self, instr: str):
 		self.text+=f"\n\t{instr}"
+
+	def generate_arg_code(self) -> str:
+		code = ""
+
+		TO_ADD = 8+self.allocated_bytes
+
+		for i, param in enumerate(self.params, 0):
+			addr: str = self.symbols.get(param, 0)["address"]
+
+			stack_addr = f"esp+{(i*4)+TO_ADD}"
+
+			code+=f"\n\tmov eax, [{stack_addr}]\n\tmov [{addr}], eax"
+			
+		
+		return code
 
 	def generate_expression(self, expr: dict):
 		key: str; node: dict
@@ -232,11 +260,9 @@ class FunctionCompiler(Compiler):
 		name: str = node["name"]
 		dtype: str = node["type"]
 
-		start = self.allocated_bytes
-		self.allocated_bytes+=4
+		self.symbols.declare(name, dtype, 4, f"ebp-{self.allocated_bytes}")
 
-		#add instrs
-		self.symbols.declare(name, dtype, 4, f"esp+{start}")
+		self.allocated_bytes+=4
 
 	def define_variable(self, node: dict):
 		name: str = node["name"]
@@ -244,15 +270,13 @@ class FunctionCompiler(Compiler):
 		value: dict = node["value"]
 		index: int = node["index"]
 
-		start = self.allocated_bytes
-		self.allocated_bytes+=4
-
-
 		#add instrs
-		self.symbols.declare(name, dtype, 4, f"esp+{start}")
+		self.symbols.declare(name, dtype, 4, f"ebp-{self.allocated_bytes}")
 		memaddr = self.symbols.assign(name, value, index)
 		self.generate_expression(value)
 		self.instr(f"mov [{memaddr}], eax")
+
+		self.allocated_bytes+=4
 	#
 
 	def assign_variable(self, node: dict):
@@ -266,11 +290,12 @@ class FunctionCompiler(Compiler):
 
 		self.instr(f"mov [{memaddr}], eax")
 
-	def generate_epilog(self):
-		return f"add esp, {self.allocated_bytes+8}\n\tpop esi\n\tpop ebx\n\tret"
-
 	def generate_prolog(self):
-		return f"push ebx\n\tpush esi\n\tsub esp, {self.allocated_bytes+8}"
+		return f"push ebp\n\tmov ebp, esp\n\tsub esp, {self.allocated_bytes}"
+
+	def generate_epilog(self):
+		# f"add esp, {self.allocated_bytes}\n\t" had preceded this, but is no longer needed?
+		return "leave\n\tret"
 
 	def return_val(self, expr: dict):
 		if expr is None: self.instr("xor eax, eax")
@@ -300,4 +325,4 @@ class FunctionCompiler(Compiler):
 			else:
 				throw("UTSC 025: Unimplemented or Invalid AST Node... ?")
 
-		return f"\t{self.generate_prolog()}\n\t{self.text}\n\t{self.generate_epilog()}"
+		return f"\t{self.generate_prolog()}{self.generate_arg_code()}\n\t{self.text}\n\t{self.generate_epilog()}"

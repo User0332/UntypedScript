@@ -22,6 +22,8 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`! (You need NAS
 
 - Imports/Modules
 - Function receiving arguments
+- Allow for non-\uXXXX escape codes in strings
+- Remove weird parser bugs that result in a lot of errors
 - Refs/Derefs/Pointers
 - If/Elif/Else Statements
 - Namespaces

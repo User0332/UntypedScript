@@ -312,8 +312,6 @@ class Parser:
 					self.advance()
 					return UnimplementedNode()
 
-
-
 			self.advance()
 
 			return FunctionCallNode(
@@ -386,6 +384,8 @@ class Parser:
 					}
 
 				return AnonymousFunctionNode(parameters, func_body)
+
+			else: return self.fallback_paren_expr(self.current.idx)
 
 		elif current.value == "if":
 			self.advance()

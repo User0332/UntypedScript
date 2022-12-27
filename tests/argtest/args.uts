@@ -1,0 +1,20 @@
+import puts from "<libc>"
+import printf from "<libc>"
+
+const somefunc = (arg1, arg2) => {
+	printf("somefunc(\u0022%s\u0022, \u0022%s\u0022)\n", arg1, arg2)
+}
+
+
+const perf_operation = (x, y, z) => ((x+y)*z)
+
+const main = () => {
+	somefunc("my first argument", "my second argument!")
+	puts("i survived!")
+
+	printf("Result of operation: %i", perf_operation(1, 2, 3))
+
+	return 0
+}
+
+export main
