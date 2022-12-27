@@ -20,8 +20,8 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`! (You need NAS
 
 ## Next on the list to do:
 
+- Test on Linux system
 - Imports/Modules
-- Function receiving arguments
 - Allow for non-\uXXXX escape codes in strings
 - Remove weird parser bugs that result in a lot of errors
 - Refs/Derefs/Pointers

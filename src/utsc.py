@@ -41,8 +41,9 @@ from os.path import (
 )
 
 from sys import (
-	exit, 
-	argv
+	exit,
+	argv,
+	platform as sys_platform
 )
 
 
@@ -61,7 +62,7 @@ def main():
 	argparser.add_argument("filename", nargs='?', default='', type=str, help='Source file')
 	argparser.add_argument("-O", "--optimization", type=int, default=0, help="Optimization level to apply. Can be 0 (default), 1, or 2")
 	outgroup = argparser.add_mutually_exclusive_group()
-	outgroup.add_argument("-o", "--out", type=str, help="output file")
+	outgroup.add_argument("-o", "--out", type=str, help="output filename")
 	outgroup.add_argument("-e", "--executable", help="run assemble.ps1 and produce an executable using NASM and MinGW", action="store_true")
 	
 	
@@ -189,9 +190,10 @@ def main():
 
 	if executable:
 		try:
-			subprocess_call(["powershell", f"{COMPILER_EXE_PATH}/assemble.ps1", out.removesuffix(".asm")])
-		except OSError:
-			throw("UTSC 022: assemble.bat is missing, destroyed, or broken")
+			if sys_platform == "win32": subprocess_call(["powershell", f"{COMPILER_EXE_PATH}/assemble.ps1", out.removesuffix(".asm")])
+			else: subprocess_call(["/usr/bin/bash", f"{COMPILER_EXE_PATH}/assemble.sh", out.removesuffix(".asm")]) # UNTESTED
+		except OSError as e:
+			throw("UTSC 022: assemble.ps1/sh is missing, destroyed, or broken - {e}")
 
 	throwerrors()
 	checkfailure()
@@ -199,4 +201,7 @@ def main():
 	return 0
 
 if __name__ == "__main__":
-	exit(main())
+	try: exit(main())
+	except KeyboardInterrupt:
+		print("Interrupt")
+		exit(1)
