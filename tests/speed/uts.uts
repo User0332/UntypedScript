@@ -1,13 +1,17 @@
-// yeah this isn't really a good test but the language just doesn't have too many features at this point in time
-
 import printf from "<libc>"
+import rand from "<libc>"
 
-const other = () => "ok"
+const calculate = (a, b, c) => {
+	return a+b*c-rand()+(a*b*c)
+}
 
 const main = () => {
-	printf("%s%s%s%s%s%s%s", other(), other(), other(), other(), other(), other(), other())
+	printf("Calculation 1: %i", calculate(30, 40, 21))
+	printf("Calculation 2: %i", calculate(49, 5, 70))
 
-	return 0+0+0+0+0+0-0-0-0-0-0-0
+	const res = calculate(30, 40, 50)
+
+	return res-res
 }
 
 export main

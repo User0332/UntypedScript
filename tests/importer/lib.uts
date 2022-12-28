@@ -1,3 +1,0 @@
-const STRING_CONSTANT = "cool this is my string constant from lib.uts!"
-
-export STRING_CONSTANT

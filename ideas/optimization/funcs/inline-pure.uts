@@ -1,0 +1,5 @@
+const func = (a, b, c) [inline pure] => {
+    return a+b+c
+}
+
+// first call will be inline, subsequent calls with identical arguments will use the saved value

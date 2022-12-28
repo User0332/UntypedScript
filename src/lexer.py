@@ -34,6 +34,7 @@ class Lexer():
 			["^namespace\s|\snamespace\s", "NAMESPACE", RE_MULTILINE],
 			["^let\s|\slet\s", "LET", RE_MULTILINE],
 			["^const\s|\sconst\s", "CONST", RE_MULTILINE],
+			["^while\s|\swhile\s|^for\s|\sfor\s", "LOOPING_KEYWD", RE_MULTILINE],
 			["^is\s|\sis\s", "IDENTITY_COMPARISON", RE_MULTILINE],
 			["^not\s|\snot\s|^or\s|\sor\s|^and\s|\sand\s", "LOGICAL_OP", RE_MULTILINE],
 			["^if\s|\sif\s|^else\s|\selse\s", "CONDITIONAL_KEYWD", RE_MULTILINE],

@@ -1,0 +1,7 @@
+// Inline functions (opt 1)
+
+import rand from "<libc>"
+
+const func = (a, b) [inline] => {  // if short enough, code directly replaced (macro-like)
+	return a+b*rand()
+}

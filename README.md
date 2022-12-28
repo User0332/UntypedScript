@@ -1,6 +1,6 @@
 # UntypedScript
 
-Project that branched off of the discontinued [PogScript](https://github.com/User0332/PogScript), with a considerably different JavaScript-like syntax.
+Project that branched off of the discontinued [PogScript](https://github.com/User0332/PogScript), with a considerably different JavaScript-like syntax. UntypedScript's goal is to become an easy-to-understand and easy-to-write language with speeds comparable to that of C or C++.
 
 Boils down to assembly code. As per the name, includes no form of a type system - you are on your own! Type hints may be introduced in the future. Sample Hello World - (other programs can be found in `tests/`)
 
@@ -16,7 +16,7 @@ const main = () => {
 export main
 ```
 
-Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`! (You need NASM and MinGW installed - currently only tested on Windows)
+Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `utsc -r helloworld.uts`! (You need NASM and MinGW installed - currently only tested on Windows)
 
 ## Next on the list to do:
 
@@ -26,6 +26,8 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`! (You need NAS
 - Remove weird parser bugs that result in a lot of errors
 - Refs/Derefs/Pointers
 - If/Elif/Else Statements
+- While loops
+- For loops
 - Namespaces
 - Object creation syntax
 - Object utils/dynamic objects

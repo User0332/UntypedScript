@@ -1,0 +1,12 @@
+// Pure func - no side effects (opt 2)
+
+const func = (a, b, c) [pure] => {
+	return a+b+c
+}
+
+const main = () => {
+	let x = func(1, 2, 3) // if func called twice with the same CONSTANT-ONLY (literal) args,
+	x = func(1, 2, 3) // value is saved in register/stack and replaced for all similar calls
+}
+
+export main

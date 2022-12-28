@@ -5,7 +5,6 @@ const somefunc = (arg1, arg2) => {
 	printf("somefunc(\u0022%s\u0022, \u0022%s\u0022)\n", arg1, arg2)
 }
 
-
 const perf_operation = (x, y, z) => ((x+y)*z)
 
 const main = () => {

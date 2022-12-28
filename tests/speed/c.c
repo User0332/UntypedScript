@@ -1,13 +1,17 @@
-extern int printf(const char*, ...);
+extern int printf(char*, ...);
+extern int rand();
 
-char* other()
+int calculate(int a, int b, int c)
 {
-	return "ok";
+	return a+b*c-rand()+(a*b*c);
 }
 
 int main()
 {
-	printf("%s%s%s%s%s%s%s", other(), other(), other(), other(), other(), other(), other());
+	printf("Calculation 1: %i", calculate(30, 40, 21));
+	printf("Calculation 2: %i", calculate(49, 5, 70));
 
-	return 0+0+0+0+0+0-0-0-0-0-0-0;
+	const int res = calculate(30, 40, 50);
+
+	return res-res;
 }
