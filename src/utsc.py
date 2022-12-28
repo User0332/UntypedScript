@@ -31,7 +31,8 @@ from subprocess import (
 from os import (
 	getcwd, 
 	listdir,
-	chdir
+	chdir,
+	remove as os_remove
 )
 
 from os.path import (
@@ -64,6 +65,7 @@ def main():
 	outgroup = argparser.add_mutually_exclusive_group()
 	outgroup.add_argument("-o", "--out", type=str, help="output filename")
 	outgroup.add_argument("-e", "--executable", help="run assemble.ps1 and produce an executable using NASM and MinGW", action="store_true")
+	outgroup.add_argument("-r", "--run", help="Run the uts program and exit", action="store_true")
 	
 	
 
@@ -71,6 +73,7 @@ def main():
 	
 	warnings = not args.suppresswarnings
 	executable = args.executable
+	runfile = args.run
 	compile_optimizations = args.optimization
 	
 	try:
@@ -110,7 +113,7 @@ def main():
 
 	if args.out == None:
 		out = basesource+".asm"
-		if not executable: warn("UTSC 006: -o option unspecified, assuming assembly", f">{out}\n")
+		if not (executable or runfile): warn("UTSC 006: -o option unspecified, assuming assembly", f">{out}\n")
 	elif not args.out.endswith((".asm", ".lst", ".json")) and args.out != 'NULL':
 		warn(f"UTSC 004: '{args.out}' is an invalid output file. Switching to assembly by default.")
 		out = basesource+".asm"
@@ -188,12 +191,22 @@ def main():
 		with open(out, "w") as f:
 			f.write(asm)
 
-	if executable:
+	if runfile or executable:
 		try:
 			if sys_platform == "win32": subprocess_call(["powershell", f"{COMPILER_EXE_PATH}/assemble.ps1", out.removesuffix(".asm")])
 			else: subprocess_call(["/usr/bin/bash", f"{COMPILER_EXE_PATH}/assemble.sh", out.removesuffix(".asm")]) # UNTESTED
 		except OSError as e:
-			throw("UTSC 022: assemble.ps1/sh is missing, destroyed, or broken - {e}")
+			throw(f"UTSC 022: assemble.ps1/sh is missing, destroyed, or broken - python: {e}")
+
+	if runfile:
+		exe = out.removesuffix("asm")+"exe"
+		try:
+			ret_code = subprocess_call([exe]) # maybe print this later?
+			os_remove(exe)
+		except OSError as e:
+			throw(f"UTSC 022: A file went missing while trying to run & remove {exe} (from {file}) - python: {e}")
+		
+		
 
 	throwerrors()
 	checkfailure()

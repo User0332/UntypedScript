@@ -12,7 +12,7 @@ const main = () => {
 	somefunc("my first argument", "my second argument!")
 	puts("i survived!")
 
-	printf("Result of operation: %i", perf_operation(1, 2, 3))
+	printf("Result of operation: %i\n", perf_operation(1, 2, 3))
 
 	return 0
 }

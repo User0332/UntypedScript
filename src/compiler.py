@@ -294,8 +294,8 @@ class FunctionCompiler(Compiler):
 		return f"push ebp\n\tmov ebp, esp\n\tsub esp, {self.allocated_bytes}"
 
 	def generate_epilog(self):
-		# f"add esp, {self.allocated_bytes}\n\t" had preceded this, but is no longer needed?
-		return "leave\n\tret"
+		# is f"add esp, {self.allocated_bytes}\n\t" needed?
+		return f"add esp, {self.allocated_bytes}\n\tpop ebp\n\tret"
 
 	def return_val(self, expr: dict):
 		if expr is None: self.instr("xor eax, eax")
