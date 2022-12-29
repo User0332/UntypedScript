@@ -87,18 +87,23 @@ class Compiler:
 		self.symbols.assign(name, value, index)
 	#
 
-	def import_module(self, node: dict):
-		name = node["name"]
+	def import_names(self, node: dict):
+		names: list[str] = node["names"]
 		module = node["module"]
 
-		if ((not isfile(f"{self.compiler_path}/lib/{name}.asm")) or (not isfile(f"{self.file_path}/{name}.asm"))) and (module != "<libc>"):
+		if ((not isfile(f"{self.compiler_path}/lib/{module}.asm")) or (not isfile(f"{self.file_path}/{module}.asm"))) and (module != "<libc>"):
 			code = get_code(self.source, node["index"])
 
 			throw(f"UTSC 020: Module '{module}' doesn't exist!", code)
 
-		self.topinstr(f"extern _{name}")
+		for name in names:
+			self.topinstr(f"extern _{name}")
 
-		self.symbols.declare(name, "CONST", 4, f"_{name}")
+			self.symbols.declare(name, "CONST", 4, f"_{name}")
+
+	def export_names(self, node: list[str]):
+		for name in node:
+			self.topinstr(f"global _{name}")
 
 	#Traverses the AST and passes off each node to a specialized function
 	def traverse(self, top: dict=None):
@@ -110,9 +115,9 @@ class Compiler:
 			if key.startswith("Expression"):
 				self.traverse(node)
 			elif key.startswith("Import"):
-				self.import_module(node)
+				self.import_names(node)
 			elif key.startswith("Export"):
-				self.topinstr(f"global _{node}")
+				self.export_names(node)
 			elif key.startswith("Variable Declaration"):
 				self.declare_variable(node)
 			elif key.startswith("Variable Definition"):
@@ -242,7 +247,7 @@ class FunctionCompiler(Compiler):
 
 		addr: str = self.symbols.get(name, index)["address"] # make sure func exists
 
-		if addr.startswith("esp"): # if addr stored on stack ptr, dereference the ptr
+		if addr.startswith("ebp"): # if addr stored on stack ptr, dereference the ptr
 			addr = f"[{addr}]"
 
 		for arg in args[::-1]: # reverse args

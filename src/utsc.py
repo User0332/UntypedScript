@@ -149,7 +149,16 @@ def main():
 
 	parser = Parser(tokens.tokens, code)
 
-	raw_ast = parser.parse()
+	try:
+		raw_ast = parser.parse()
+	except RecursionError as e:
+		throw(f"Fatal Error UTSC 017: Parser overran recursion limit - python: {e}")
+
+		throwerrors()
+		if warnings: printwarnings()
+		
+		return 1
+		
 
 	raw_ast = ASTCleaner(raw_ast).clean()
 

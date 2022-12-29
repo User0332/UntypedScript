@@ -1,6 +1,8 @@
-import puts from "<libc>"
-import printf from "<libc>"
-import sleep from "<libc>"
+import {
+	puts, 
+	printf, 
+	sleep
+} from "<libc>"
 
 const my_other_func = () => 0
 
@@ -25,4 +27,4 @@ const main = () => {
 	return 0
 }
 
-export main
+export { main }

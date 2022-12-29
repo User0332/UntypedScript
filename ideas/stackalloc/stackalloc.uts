@@ -24,3 +24,5 @@ const _main = () => {
 	stackfree (buffer)
 
 }
+
+export { main, _main }

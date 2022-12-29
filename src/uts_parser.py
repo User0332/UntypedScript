@@ -1,3 +1,9 @@
+import sys
+import traceback # for debugging
+
+# max limit possible without crashing compiler
+sys.setrecursionlimit(3800)
+
 from json import loads, dumps
 
 from utils import (
@@ -118,20 +124,20 @@ class FunctionReturnStatement(Node):
 		return f'{{ "Return Statement": {self.expr} }}'
 
 class ImportNode(Node):
-	def __init__(self, modname: str, name: str, idx: int):
+	def __init__(self, modname: str, names: list[str], idx: int):
 		self.modname = modname
-		self.name = name
+		self.names = dumps(names)
 		self.idx = idx
 
 	def __repr__(self) -> str:
-		return f'{{ "Import": {{ "module": {self.modname}, "name": "{self.name}", "index": {self.idx} }} }}'
+		return f'{{ "Import": {{ "module": {self.modname}, "names": {self.names}, "index": {self.idx} }} }}'
 
 class ExportNode(Node):
-	def __init__(self, name: str):
-		self.name = name
+	def __init__(self, names: list[str]):
+		self.names = dumps(names)
 
 	def __repr__(self) -> str:
-		return f'{{ "Export": "{self.name}" }}'
+		return f'{{ "Export": {self.names} }}'
 #
 
 #Parser
@@ -139,6 +145,7 @@ class Parser:
 	def __init__(self, tokens, code):
 		self.tokens = tokens
 		self.code = code
+		self.in_paren = []
 		self.in_func = []
 		self.idx = -1
 		self.advance()
@@ -242,26 +249,43 @@ class Parser:
 		left = func_a()
 
 		while self.current.value in ops:
+			if self.in_paren: self.skip_newlines()
+
 			op = self.current
 			self.advance()
+
+			if self.in_paren: self.skip_newlines()
+
 			right = func_b()
 			
 			left = BinOpNode(left, op, right)		
 		
-
 		return left
 
 	def fallback_paren_expr(self, fallback_idx: int): # Function to call if arrow function parsing fails
+		self.in_paren.append(None)
+
 		while self.current.idx != fallback_idx: self.decrement()
 
+		self.skip_newlines()
+
 		expression = self.expr()
+		
+		self.skip_newlines()
+
 		if expression is None:
 			expression = {}
 		if self.current.value == ')':
 			self.advance()
+
+			self.in_paren.pop()
+
 			return expression
 		else:
 			self.decrement()
+
+			self.in_paren.pop()
+
 			code = get_code(self.code, self.current.idx)
 			
 			throw(f"UTSC 018: Expected ')', got {fmt_type(self.current.type)}", code)
@@ -269,12 +293,51 @@ class Parser:
 			self.advance()
 			return UnimplementedNode()
 
+	def grab_import_export_names(self) -> list[str]:
+		names: list[str] = []
+
+		while 1:
+			self.skip_newlines()
+
+			if self.current.type != "IDENTIFIER":
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 018: Expected identifier, got {fmt_type(self.current.type)}", code)
+
+				self.advance()
+				return UnimplementedNode()
+			
+			names.append(self.current.value)
+			
+			self.advance()
+
+			self.skip_newlines()
+
+			if self.current.value == ',':
+				self.advance()
+				continue
+
+			if self.current.value == '}':
+				break
+
+			code = get_code(self.code, self.current.idx)
+			throw(f"UTSC 018: Expected '}}' or ',', got {fmt_type(self.current.type)}", code)
+			
+			self.advance()
+			return UnimplementedNode()
+
+		self.advance() # pass the closing curly brace
+
+		return names
+
 	#Grammar Term
 	def term(self):
 		return self.bin_op(self.factor, ('*', '/'))
 		
 	#Grammar Atom
 	def atom(self):
+		if self.in_paren: self.skip_newlines()
+
 		current = self.current
 
 		if current.type == "IDENTIFIER":
@@ -330,7 +393,7 @@ class Parser:
 		elif current.value == '(':
 			self.advance()
 
-			if self.current.type == "IDENTIFIER" or self.current.value == ')':
+			if (self.current.type == "IDENTIFIER") or (self.current.value == ')'):
 				fallback_idx = self.current.idx
 				parameters = []
 
@@ -385,7 +448,8 @@ class Parser:
 
 				return AnonymousFunctionNode(parameters, func_body)
 
-			else: return self.fallback_paren_expr(self.current.idx)
+			else:
+				return self.fallback_paren_expr(self.current.idx)
 
 		elif current.value == "if":
 			self.advance()
@@ -396,38 +460,49 @@ class Parser:
 			expr = self.expr()
 
 			return FunctionReturnStatement(expr)
-		elif self.current.type == "EXPORT" and not self.in_func:
+		elif current.type == "EXPORT" and not self.in_func:
 			self.advance()
 
-			if self.current.type != "IDENTIFIER":
+			if self.current.value != '{':
 				code = get_code(self.code, self.current.idx)
 
-				throw(f"UTSC 018: Expected identifier, got {fmt_type(self.current.type)}", code)
+				throw(f"UTSC 018: Expected '}}', got {fmt_type(self.current.type)}", code)
 				return UnimplementedNode()
 
-			name = self.current.value
-
 			self.advance()
+
+			names = self.grab_import_export_names()
 			
-			return ExportNode(name)
+			return ExportNode(names)
 
-		elif self.current.type == "IMPORT" and not self.in_func:
+		elif current.type == "IMPORT" and not self.in_func:
 			self.advance()
+
+			names: list[str] = []
 			
-			if self.current.type != "IDENTIFIER":
-				code = get_code(self.code, self.current.idx)
+			if self.current.value == '{':
+				self.advance()
 
-				throw(f"UTSC 018: Expected identifier, got {fmt_type(self.current.type)}", code)
-				return UnimplementedNode()
+				names = self.grab_import_export_names()
+			else:
+				if self.current.type != "IDENTIFIER":
+					code = get_code(self.code, self.current.idx)
 
-			name = self.current.value
+					throw(f"UTSC 018: Expected identifier or '{{', got {fmt_type(self.current.type)}", code)
 
-			self.advance()
+					self.advance()
+					return UnimplementedNode()
+
+				names.append(self.current.value)
+
+				self.advance()
 
 			if self.current.type != "FROM":
 				code = get_code(self.code, self.current.idx)
 
 				throw(f"UTSC 018: Expected 'from', got {self.current.value!r}", code)
+
+				self.advance()
 				return UnimplementedNode()
 
 			self.advance()
@@ -442,11 +517,11 @@ class Parser:
 
 			self.advance()
 
-			return ImportNode(modnode.value, name, modnode.idx)
+			return ImportNode(modnode.value, names, modnode.idx)
 
-		code = get_code(self.code, self.current.idx)
+		code = get_code(self.code, current.idx)
 		
-		throw(f"UTSC 018: Expected int, float, identifier, '+', '-', or '(', got {fmt_type(self.current.type)}", code)
+		throw(f"UTSC 018: Expected int, float, identifier, '+', '-', or '(', got {fmt_type(current.type)}", code)
 
 		self.advance()
 		return UnimplementedNode()
@@ -561,7 +636,6 @@ class Parser:
 				else:
 					return VariableDefinitionNode(vartype, name, expr, self.current.idx)
 			else:
-				print(self.current)
 				code = get_code(self.code, self.current.idx)
 				
 				throw(f"UTSC 018: Expected '=' or <newline>, got {fmt_type(self.current.type)}", code)

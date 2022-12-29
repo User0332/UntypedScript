@@ -21,6 +21,14 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
 ## Next on the list to do:
 
 - Test on Linux system
+- Error throwing that actually shows the correct line
+- Solve recursion errors in parser
+- Standardize error numbers later:
+    - 0XX for `utsc.py`
+    - 1XX for lexer
+    - 2XX for the parser
+    - 3XX for the compiler
+    - 4XX for other module (optimizer, preprocessor, cleaner, etc.)
 - Imports/Modules
 - Allow for non-\uXXXX escape codes in strings
 - Remove weird parser bugs that result in a lot of errors

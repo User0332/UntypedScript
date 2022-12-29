@@ -14,4 +14,4 @@ const main = () => {
 	return res-res
 }
 
-export main
+export { main }
