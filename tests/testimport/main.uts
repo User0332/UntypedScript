@@ -1,0 +1,10 @@
+import { printf } from "<libc>"
+import { MY_NUMBER } from "module"
+
+const main = () => {
+    printf("My number: %i\n", MY_NUMBER)
+
+    return 0
+}
+
+export { main }

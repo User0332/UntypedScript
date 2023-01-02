@@ -1,4 +1,4 @@
-from utils import NonConstantNumericalExpressionException
+from utils import SigNonConstantNumericalExpressionException
 
 valid_nodes = (
 	"Variable", 
@@ -32,7 +32,7 @@ class SyntaxTreePreproccesor:
 			elif key.startswith("Numerical Constant"):
 				expr+=str(node[key])
 			else:
-				raise NonConstantNumericalExpressionException
+				raise SigNonConstantNumericalExpressionException
 
 
 		return f"({expr})"
@@ -74,8 +74,7 @@ class SyntaxTreePreproccesor:
 			if key.startswith(("Binary Operation", "Unary Operation", "Number Literal")):
 				try:
 					expr = self.simplify_numerical_expression({key : node})
-				except NonConstantNumericalExpressionException:
-					pass
+				except SigNonConstantNumericalExpressionException: pass
 				else:
 					del_nodes.append(key)
 					new_nodes.append(["Numerical Constant", eval(expr)])

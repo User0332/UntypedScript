@@ -46,7 +46,7 @@ def strgetline(string: str, index: int):
 	current_idx = 0
 	for i, line in enumerate(string.splitlines()):
 		current_idx+=1
-		for j in range(1, len(line)):
+		for j in range(0, len(line)-1):
 			current_idx+=1
 			if current_idx == index:
 				return [line, j, i+1]
@@ -91,15 +91,17 @@ def checkfailure():
 #
 
 
-# Custom Exception used in the ast preprocessor
-class NonConstantNumericalExpressionException(Exception):
-	pass
+# Custom Exceptions used in the ast preprocessor/lexer
+class SigNonConstantNumericalExpressionException(Exception): pass
+
+class SigTermTokenization(Exception): pass
 #
 
 # Utility Classes
 class Token:
 	def __init__(self, token=None):
 		token = token if token else [None, None, None]
+
 		self.type = token[0]
 		self.value = token[1]
 		self.idx = token[2]
@@ -110,38 +112,38 @@ class Token:
 	def __str__(self):
 		return str([self.value, self.type])
 
-class TokenSorter:
-	def __init__(self, tokens: list):
-		self.tokens = tokens
+# class TokenSorter:
+# 	def __init__(self, tokens: list):
+# 		self.tokens = tokens
 
-	def __repr__(self):
-		return str(self.tokens)
+# 	def __repr__(self):
+# 		return str(self.tokens)
 
-	def __len__(self):
-		return len(self.tokens)
+# 	def __len__(self):
+# 		return len(self.tokens)
 
-	def __iter__(self):
-		return self.tokens.__iter__()
+# 	def __iter__(self):
+# 		return self.tokens.__iter__()
 
-	def __next__(self):
-		return self.tokens.__next__()
+# 	def __next__(self):
+# 		return self.tokens.__next__()
 
-	def sort(self):
-		positions = {}
-		tokens = []
+# 	def sort(self):
+# 		positions = {}
+# 		tokens = []
 	
-		for token in self.tokens:
-				positions[token[2]] = [token[0], token[1], token[2]]
+# 		for token in self.tokens:
+# 				positions[token[2]] = [token[0], token[1], token[2]]
 
-		token_positions = sorted(positions)
+# 		token_positions = sorted(positions)
 
-		for pos in token_positions:
-			tokens.append(positions[pos])
+# 		for pos in token_positions:
+# 			tokens.append(positions[pos])
 
-		tokens.append(["EOF", "Reached end of file", tokens[-1][2]+1])
+# 		tokens.append(["EOF", "Reached end of file", tokens[-1][2]+1])
 
-		self.tokens = tokens
-		self.positions = positions
+# 		self.tokens = tokens
+# 		self.positions = positions
 
 class ArgParser(ArgumentParser):
 	def error(self, message):

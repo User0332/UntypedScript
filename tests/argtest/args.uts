@@ -1,10 +1,10 @@
 import { 
 	puts, 
 	printf
-} from "<libc>"
+} from "<libc>" // yay! comments work!!!
 
 const somefunc = (arg1, arg2) => {
-	printf("somefunc(\u0022%s\u0022, \u0022%s\u0022)\n", arg1, arg2)
+	printf("somefunc(\x22%s\x22, \x22%s\x22)\n", arg1, arg2)
 }
 
 const perf_operation = (x, y, z) => ((x+y)*z)

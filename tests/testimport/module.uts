@@ -1,0 +1,3 @@
+const MY_NUMBER = 22
+
+export { MY_NUMBER }

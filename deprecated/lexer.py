@@ -11,13 +11,12 @@ from utils import (
 )
 
 #Lexer
-class Lexer():
+class Lexer:
 	def __init__(self, source_code: str):
 		self.source_code = source_code
 
 	#Uses regex patterns to search for tokens
 	def tokenize(self):
-		self.modifier_commands = []
 		tokens = []
 
 		working_code = self.source_code

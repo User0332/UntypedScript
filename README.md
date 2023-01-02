@@ -29,8 +29,6 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
     - 2XX for the parser
     - 3XX for the compiler
     - 4XX for other module (optimizer, preprocessor, cleaner, etc.)
-- Imports/Modules
-- Allow for non-\uXXXX escape codes in strings
 - Remove weird parser bugs that result in a lot of errors
 - Refs/Derefs/Pointers
 - If/Elif/Else Statements
@@ -42,3 +40,7 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
 - Object integration with C structs
 - Object destructuring
 - Maybe type hinting or a VSCode extension
+
+## Notes
+
+- For the moment, only \xXX escape codes are permitted

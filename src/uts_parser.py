@@ -26,10 +26,12 @@ class NumNode(Node):
 	def __repr__(self):
 		return f'{{"Numerical Constant" : {self.value} }}'
 
-class StringLiteral(NumNode):
+class StringLiteral(Node):
+	def __init__(self, value: str):
+		self.value = value
+
 	def __repr__(self):
-		return super().__repr__() \
-			.replace("Numerical Constant", "String Literal")
+		return f'{{ "String Literal": {dumps(self.value)}  }}'
 
 class BinOpNode(Node):
 	def __init__(self, left: Node, op: Token, right: Node):
@@ -125,7 +127,7 @@ class FunctionReturnStatement(Node):
 
 class ImportNode(Node):
 	def __init__(self, modname: str, names: list[str], idx: int):
-		self.modname = modname
+		self.modname = dumps(modname)
 		self.names = dumps(names)
 		self.idx = idx
 

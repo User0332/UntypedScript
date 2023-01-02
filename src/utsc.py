@@ -1,5 +1,5 @@
 #LOCAL MODULES
-from lexer import Lexer
+from sequential_lexer import Lexer
 from uts_parser import Parser
 from ast_cleaner import ASTCleaner
 from ast_preprocessor import SyntaxTreePreproccesor
@@ -13,7 +13,8 @@ from utils import (
 	printwarnings, 
 	CYAN, 
 	END, 
-	ArgParser
+	ArgParser,
+	SigTermTokenization
 )
 
 # OTHER UTILITY MODULES
@@ -125,14 +126,15 @@ def main():
 	if warnings: printwarnings()
 	checkfailure()
 
-	lexer = Lexer(code)
+	lexer = Lexer(code)	
 
-	tokens = lexer.tokenize()
-	
-	tokens.sort()
+	try: tokens = lexer.tokenize()
+	except SigTermTokenization: # lexer signaled to terminate compilation
+		throwerrors()
+		if warnings: printwarnings()
+		return 1
 
 	formatted_list = ["[\n"]
-
 	formatted_list += [str(token)+"\n" for token in tokens] + ["]"]
 
 	if show in ("tok", "toks", "token", "tokens", "all"):
@@ -147,7 +149,7 @@ def main():
 		with open(out, "w") as f:
 			f.write("".join(formatted_list))
 
-	parser = Parser(tokens.tokens, code)
+	parser = Parser(tokens, code)
 
 	try:
 		raw_ast = parser.parse()
@@ -202,8 +204,23 @@ def main():
 
 	if runfile or executable:
 		try:
-			if sys_platform == "win32": subprocess_call(["powershell", f"{COMPILER_EXE_PATH}/assemble.ps1", out.removesuffix(".asm")])
-			else: subprocess_call(["/usr/bin/bash", f"{COMPILER_EXE_PATH}/assemble.sh", out.removesuffix(".asm")]) # UNTESTED
+			if sys_platform == "win32":
+				subprocess_call(
+					[
+						"powershell", 
+						f"{COMPILER_EXE_PATH}/assemble.ps1", 
+						out.removesuffix(".asm"),
+						*compiler.link_with
+					]
+				)
+			else:
+				subprocess_call(
+					[
+						"/usr/bin/bash", 
+						f"{COMPILER_EXE_PATH}/assemble.sh", 
+						out.removesuffix(".asm")
+					]
+				) # UNTESTED
 		except OSError as e:
 			throw(f"UTSC 022: assemble.ps1/sh is missing, destroyed, or broken - python: {e}")
 

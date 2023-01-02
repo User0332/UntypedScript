@@ -2,12 +2,14 @@ from utils import (
 	get_code,
 	throw,
 	SymbolTable,
-	NonConstantNumericalExpressionException
+	SigNonConstantNumericalExpressionException
 )
 
 from ast_preprocessor import SyntaxTreePreproccesor
 
 from os.path import isfile
+from sys import platform as sys_platform
+from subprocess import call as subproc_call
 
 class Compiler:
 	def __init__(self, ast: dict, code: str, compiler_path: str, file_path: str):
@@ -22,6 +24,10 @@ class Compiler:
 		self.hidden_counter = 0
 		self.compiler_path = compiler_path
 		self.file_path = file_path
+		self.link_with: list[str] = []
+
+		# add more options - i.e. architecture from cmd line args
+		self.platform = "win32" if sys_platform == "win32" else "elf32"
 
 	@property
 	def asm(self) -> str:
@@ -77,7 +83,7 @@ class Compiler:
 			self.datainstr(f"_{name} db {value}, 0")
 		else:
 			try: value = eval(self.evaluator.simplify_numerical_expression(value))
-			except NonConstantNumericalExpressionException:
+			except SigNonConstantNumericalExpressionException:
 				code = get_code(self.source, index)
 				throw("UTSC 022: Only constant numerical/function/string values allowed in global scope", code)
 
@@ -91,7 +97,33 @@ class Compiler:
 		names: list[str] = node["names"]
 		module = node["module"]
 
-		if ((not isfile(f"{self.compiler_path}/lib/{module}.asm")) or (not isfile(f"{self.file_path}/{module}.asm"))) and (module != "<libc>"):
+		uts_mod = f"{self.file_path}/{module}.uts"
+		asm_mod = f"{self.file_path}/{module}.asm"
+		obj_mod = f"{self.file_path}/{module}.o"
+		lib_obj_mod = f"{self.compiler_path}/lib/{module}.o"
+
+		if sys_platform == "win32":
+			shell = ["powershell"]
+		else:
+			shell = ["bash", "-c"]
+
+		if (isfile(uts_mod)): # if a .uts file, compile it
+			try: subproc_call([*shell, "utsc", "-o", asm_mod, uts_mod])
+			except OSError:
+				throw(f"UTSC 024: Module '{module}' could not be compiled - utsc is not in PATH.")
+
+		# make compiler config with NASM and GCC paths/ configured shell to use later
+		if (isfile(asm_mod)):
+			try: subproc_call([*shell, "nasm", "-f", self.platform, "-o", obj_mod, asm_mod])
+			except OSError:
+				throw(f"UTSC 024: Module '{module}' could not be compiled - nasm is not in PATH.")
+
+		# now make sure the object file is actually here
+		if isfile(lib_obj_mod):
+			self.link_with.append(lib_obj_mod)
+		elif isfile(obj_mod):
+			self.link_with.append(obj_mod)
+		elif module != "<libc>": # if module doesn't exist...
 			code = get_code(self.source, node["index"])
 
 			throw(f"UTSC 020: Module '{module}' doesn't exist!", code)

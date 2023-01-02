@@ -1,14 +1,14 @@
 import { rand, div } from "<libc>"
 
 const random = (min, max) => {
-    return (rand() % (max+1))+min // faulty
+	return (rand() % (max+1))+min // faulty
 }
 
 const divide = (num, denom) => {
-    
+	
 }
 
 export {
-    random,
-    divide
+	random,
+	divide
 }
