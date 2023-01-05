@@ -85,7 +85,7 @@ class Compiler:
 			try: value = eval(self.evaluator.simplify_numerical_expression(value))
 			except SigNonConstantNumericalExpressionException:
 				code = get_code(self.source, index)
-				throw("UTSC 022: Only constant numerical/function/string values allowed in global scope", code)
+				throw("UTSC 303: Only constant numerical/function/string values allowed in global scope", code)
 
 			self.datainstr(f"_{name} db {value}")
 
@@ -110,13 +110,13 @@ class Compiler:
 		if (isfile(uts_mod)): # if a .uts file, compile it
 			try: subproc_call([*shell, "utsc", "-o", asm_mod, uts_mod])
 			except OSError:
-				throw(f"UTSC 024: Module '{module}' could not be compiled - utsc is not in PATH.")
+				throw(f"UTSC 301: Module '{module}' could not be compiled - utsc is not in PATH.")
 
 		# make compiler config with NASM and GCC paths/ configured shell to use later
 		if (isfile(asm_mod)):
 			try: subproc_call([*shell, "nasm", "-f", self.platform, "-o", obj_mod, asm_mod])
 			except OSError:
-				throw(f"UTSC 024: Module '{module}' could not be compiled - nasm is not in PATH.")
+				throw(f"UTSC 301: Module '{module}' could not be compiled - nasm is not in PATH.")
 
 		# now make sure the object file is actually here
 		if isfile(lib_obj_mod):
@@ -126,7 +126,7 @@ class Compiler:
 		elif module != "<libc>": # if module doesn't exist...
 			code = get_code(self.source, node["index"])
 
-			throw(f"UTSC 020: Module '{module}' doesn't exist!", code)
+			throw(f"UTSC 302: Module '{module}' doesn't exist!", code)
 
 		for name in names:
 			self.topinstr(f"extern _{name}")
@@ -156,9 +156,9 @@ class Compiler:
 				self.define_variable(node)
 			elif key.startswith("Variable Assignment"):
 				code = get_code(self.source, node["index"])
-				throw("UTSC 023: Assignments not allowed in global scope.", code)
+				throw("UTSC 304: Assignments not allowed in global scope.", code)
 			else:
-				throw("UTSC 025: Unimplemented or Invalid AST Node... ?")
+				throw(f"UTSC 305: Unimplemented or Invalid AST Node '{key}'")
 
 		return self.asm
 	#
@@ -340,6 +340,28 @@ class FunctionCompiler(Compiler):
 
 		self.instr(self.generate_epilog()) # place epilog here
 
+	def generate_conditional(self, conditional: dict):
+		condition: dict = conditional["condition"]
+		if_body: dict = conditional["if"]
+		else_body: dict = conditional["else"]
+
+		iflabel = f".if.{self.outer.hidden_counter}"
+		elselabel = f".else.{self.outer.hidden_counter}"
+		contlabel = f".cont.{self.outer.hidden_counter}"
+		self.outer.hidden_counter+=1
+
+		self.generate_expression(condition)
+		self.instr("cmp eax, 0") # then jump to labels from here
+		self.instr(f"jne {iflabel}")
+		self.instr(f"jmp {elselabel}")
+
+		self.instr(f"{iflabel}:")
+		self.traverse(if_body)
+		self.instr(f"jmp {contlabel}")
+		self.instr(f"{elselabel}:")
+		self.traverse(else_body)		
+		self.instr(f"{contlabel}:")
+
 	#Traverses the AST and passes off each node to a specialized function
 	def traverse(self, top: dict=None):
 		key: str; node: dict
@@ -359,7 +381,9 @@ class FunctionCompiler(Compiler):
 				self.call_func(node)
 			elif key.startswith("Return Statement"):
 				self.return_val(node)
+			elif key.startswith("Conditional Statement"):
+				self.generate_conditional(node)
 			else:
-				throw("UTSC 025: Unimplemented or Invalid AST Node... ?")
+				throw(f"UTSC 305: Unimplemented or Invalid AST Node '{key}'")
 
 		return f"\t{self.generate_prolog()}{self.generate_arg_code()}\n\t{self.text}\n\t{self.generate_epilog()}"

@@ -19,7 +19,6 @@ from utils import (
 
 # OTHER UTILITY MODULES
 from json import (
-	loads, 
 	dumps
 )
 
@@ -90,9 +89,9 @@ def main():
 				file = filename
 
 		if file != "":
-			warn("UTSC 011: No source file specified. Assuming the below file.", f">{file}\n")	
+			warn("UTSC 001: No source file specified. Assuming the below file.", f">{file}\n")	
 		else:
-			throw("Fatal Error UTSC 022: No valid source file found.")
+			throw("Fatal Error UTSC 002: No valid source file found.")
 			throwerrors()
 			return 1
 
@@ -100,7 +99,7 @@ def main():
 		with open(file, 'r') as f:
 			code = f.read()
 	except OSError:
-		throw("Fatal Error UTSC 022: Either the specified source file could not be found, or permission was denied.")
+		throw("Fatal Error UTSC 003: Either the specified source file could not be found, or permission was denied.")
 	
 	#Dependent Constants
 	INPUT_FILE_PATH = dirname(file).replace("\\", "/")
@@ -114,7 +113,7 @@ def main():
 
 	if args.out == None:
 		out = basesource+".asm"
-		if not (executable or runfile): warn("UTSC 006: -o option unspecified, assuming assembly", f">{out}\n")
+		if not (executable or runfile): warn("UTSC 004: -o option unspecified, assuming assembly", f">{out}\n")
 	elif not args.out.endswith((".asm", ".lst", ".json")) and args.out != 'NULL':
 		warn(f"UTSC 004: '{args.out}' is an invalid output file. Switching to assembly by default.")
 		out = basesource+".asm"
@@ -154,7 +153,7 @@ def main():
 	try:
 		raw_ast = parser.parse()
 	except RecursionError as e:
-		throw(f"Fatal Error UTSC 017: Parser overran recursion limit - python: {e}")
+		throw(f"Fatal Error UTSC 005: Parser overran recursion limit - python: {e}")
 
 		throwerrors()
 		if warnings: printwarnings()
@@ -222,7 +221,7 @@ def main():
 					]
 				) # UNTESTED
 		except OSError as e:
-			throw(f"UTSC 022: assemble.ps1/sh is missing, destroyed, or broken - python: {e}")
+			throw(f"UTSC 003: assemble.ps1/sh is missing, destroyed, or broken - python: {e}")
 
 	if runfile:
 		exe = out.removesuffix("asm")+"exe"
@@ -230,7 +229,7 @@ def main():
 			ret_code = subprocess_call([exe]) # maybe print this later?
 			os_remove(exe)
 		except OSError as e:
-			throw(f"UTSC 022: A file went missing while trying to run & remove {exe} (from {file}) - python: {e}")
+			throw(f"UTSC 003: A file went missing while trying to run & remove {exe} (from {file}) - python: {e}")
 		
 		
 

@@ -1,0 +1,29 @@
+UTSC/Other (0XX)
+1 No specificed source file, assuming first valid file
+2 No valid source file found
+3 File not found
+4 Command line argument error/warning
+5 Parser ran into Python error (specific to implementation, hopefully fixed in the future)
+
+Lexer (1XX)
+1 Invalid escape code in string
+2 Unterminated string
+3 Invalid float literal
+4 Unexpected token encountered
+
+Parser (2XX)
+1 Missing statement delimeter
+2 Unexpected EOF
+3 Expected token
+4 Constant variable was not assigned a value
+
+Compiler (3XX)
+1 File not found
+2 Module doesn't exist
+3 Invalid global-scope variable value
+4 Reassignment in global scope
+5 Malformed/Unimplemented AST Node encountered
+6 Tried to reassign constant variable
+7 Name Error
+
+Other Modules (4XX)

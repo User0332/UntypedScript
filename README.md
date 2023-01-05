@@ -13,7 +13,7 @@ const main = () => {
     return 0
 }
 
-export main
+export { main }
 ```
 
 Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `utsc -r helloworld.uts`! (You need NASM and MinGW installed - currently only tested on Windows)
@@ -31,9 +31,11 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
     - 4XX for other module (optimizer, preprocessor, cleaner, etc.)
 - Remove weird parser bugs that result in a lot of errors
 - Refs/Derefs/Pointers
-- If/Elif/Else Statements
+- If/Else Statements
+- Elif Blocks
 - While loops
 - For loops
+- Being able to 'call' expressions - i.e. call an anonymous function - `(() => puts("hi"))()`
 - Namespaces
 - Object creation syntax
 - Object utils/dynamic objects
@@ -43,4 +45,4 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
 
 ## Notes
 
-- For the moment, only \xXX escape codes are permitted
+- For the moment, \uXXXX and \XXXX escape codes are not permitted

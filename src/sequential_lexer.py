@@ -2,7 +2,6 @@ import string
 from utils import (
 	get_code, throw,
 	SigTermTokenization,
-	throwerrors
 )
 
 Token = list[
@@ -135,7 +134,7 @@ class Lexer:
 				if char not in self.VALID_HEX:
 					code = get_code(self.code, self.i)
 
-					throw("UTSC 119: Invalid Escape Code - Terminating Tokenization!", code)
+					throw("UTSC 101: Invalid Escape Code - Terminating Tokenization!", code)
 					raise SigTermTokenization()
 
 				hex_code+=char
@@ -155,7 +154,7 @@ class Lexer:
 
 		code = get_code(self.code, start)
 
-		throw(f"UTSC 119: Unterminated String - Terminating Tokenization", code)
+		throw(f"UTSC 102: Unterminated String - Terminating Tokenization", code)
 		raise SigTermTokenization()
 
 	def build_number(self):
@@ -181,7 +180,7 @@ class Lexer:
 
 				code = get_code(self.code, self.i)
 
-				throw("UTSC 119: Multiple dots in numerical constant - Terminating Tokenization", code)
+				throw("UTSC 103: Multiple dots in numerical constant - Terminating Tokenization", code)
 				raise SigTermTokenization()
 
 			break
@@ -189,7 +188,7 @@ class Lexer:
 		if num.endswith('.'):
 			code = get_code(self.i-1)
 			
-			throw("UTSC 119: Numerical constant ends with a dot - Terminating Tokenization", code)
+			throw("UTSC 103: Numerical constant ends with a dot - Terminating Tokenization", code)
 			raise SigTermTokenization
 
 
@@ -409,7 +408,7 @@ class Lexer:
 			# token left unlexed
 			code = get_code(self.code, self.i)
 
-			throw(f"UTSC 119: Invalid Syntax - Terminating Tokenization @ char {char!r}", code)
+			throw(f"UTSC 104: Invalid Syntax - Terminating Tokenization @ char {char!r}", code)
 			raise SigTermTokenization()
 
 		tokens.append(

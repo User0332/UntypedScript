@@ -112,42 +112,9 @@ class Token:
 	def __str__(self):
 		return str([self.value, self.type])
 
-# class TokenSorter:
-# 	def __init__(self, tokens: list):
-# 		self.tokens = tokens
-
-# 	def __repr__(self):
-# 		return str(self.tokens)
-
-# 	def __len__(self):
-# 		return len(self.tokens)
-
-# 	def __iter__(self):
-# 		return self.tokens.__iter__()
-
-# 	def __next__(self):
-# 		return self.tokens.__next__()
-
-# 	def sort(self):
-# 		positions = {}
-# 		tokens = []
-	
-# 		for token in self.tokens:
-# 				positions[token[2]] = [token[0], token[1], token[2]]
-
-# 		token_positions = sorted(positions)
-
-# 		for pos in token_positions:
-# 			tokens.append(positions[pos])
-
-# 		tokens.append(["EOF", "Reached end of file", tokens[-1][2]+1])
-
-# 		self.tokens = tokens
-# 		self.positions = positions
-
 class ArgParser(ArgumentParser):
 	def error(self, message):
-		throw(f"Fatal Error POGCC 031: {message.capitalize()}")
+		throw(f"Fatal Error UTSC 004: {message.capitalize()}")
 		throwerrors()
 		exit(1)
 
@@ -165,7 +132,8 @@ class SymbolTable:
 			else:
 				line, idx, linenum = strgetline(self.code, index)
 				code = formatline(line, idx, linenum)
-				throw(f"POGCC 027: Name Error: Name '{name}' not defined.", code)
+				throw(f"UTSC 307: Name Error: Name '{name}' not defined.", code)
+				return None
 		
 		return attr
 
@@ -178,22 +146,19 @@ class SymbolTable:
 		}
 
 	def assign(self, name: str, value, index: int):
-		if name not in self.symbols.keys():
-			
+		var = self.get(name, index)
+		if var is None: return
+
+		# ADD/TODO?: check if value is too large to be held (size > self.symbols[name]['size'])
+
+		if (var["type"] == "CONST") and (var["value"] is not None):
 			line, idx, linenum = strgetline(self.code, index)
 			code = formatline(line, idx, linenum)
-			throw(f"POGCC 027: Name Error: Attemped to assign to undeclared variable '{name}'", code)
-		
-		#check if value is too large to be held (size > self.symbols[name]['size'])
+			throw(f"UTSC 306: Name Error: Attemped to assign to constant '{name}'", code)
 
+		var["value"] = value
 
-		if (self.symbols[name]["type"] == "CONST") and self.symbols[name]["value"] is not None:
-			line, idx, linenum = strgetline(self.code, index)
-			code = formatline(line, idx, linenum)
-			throw(f"POGCC 027: Name Error: Attemped to assign to constant '{name}'", code)
-
-		self.symbols[name]["value"] = value
-		return self.symbols[name]["address"]
+		return var["address"]
 
 	def delete(self, name: str):
 		del self.symbols[name]

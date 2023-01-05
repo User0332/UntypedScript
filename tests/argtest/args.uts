@@ -4,7 +4,7 @@ import {
 } from "<libc>" // yay! comments work!!!
 
 const somefunc = (arg1, arg2) => {
-	printf("somefunc(\x22%s\x22, \x22%s\x22)\n", arg1, arg2)
+	printf("somefunc(\"%s\", \"%s\")\n", arg1, arg2)
 }
 
 const perf_operation = (x, y, z) => ((x+y)*z)
