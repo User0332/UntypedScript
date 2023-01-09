@@ -1,0 +1,13 @@
+import { printf } from "<libc>"
+
+const main = () => { 
+	let result = 2 != 123-1
+
+	printf("Result: %i\n", result)
+
+	result = 0 or (not 1)
+
+	printf("Result: %i\n", result)
+}
+
+export { main }

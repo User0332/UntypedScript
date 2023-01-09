@@ -1,0 +1,13 @@
+import { printf } from "<libc>"
+
+const main = () => {
+	let i = 0
+
+	while (i < 5)
+	{
+		printf("i = %i\n", i)
+		i+=1
+	}
+}
+
+export { main }

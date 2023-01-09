@@ -25,5 +25,6 @@ Compiler (3XX)
 5 Malformed/Unimplemented AST Node encountered
 6 Tried to reassign constant variable
 7 Name Error
+8 Invalid target for expression (ex. i = return)
 
 Other Modules (4XX)

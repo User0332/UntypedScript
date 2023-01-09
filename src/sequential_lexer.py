@@ -37,7 +37,7 @@ class Lexer:
 		}
 		self.SPECIALS = "()[]{}.:,;"
 		self.OPERATORS = (
-			*"+-*/", "**"
+			*"+-*/%", "**"
 		)
 		self.VALID_WORD = string.ascii_letters+'_'
 		self.VALID_DIGITS = string.digits
@@ -274,7 +274,8 @@ class Lexer:
 
 		return [
 			"COMPARISON_OP",
-			'<'
+			'<',
+			start
 		]
 
 	def try_comment(self):
@@ -332,7 +333,7 @@ class Lexer:
 
 			if char == '\n':
 				tokens.append(
-					["NEWLINE", "\n", self.i]
+					["NEWLINE", '\n', self.i]
 				)
 
 				tok_spaced = True
@@ -374,6 +375,17 @@ class Lexer:
 				tok_spaced = True
 
 				self.i+=1
+				continue
+
+			if char == '!' and self.code[self.i+1] == '=':
+				tokens.append(
+					["COMPARISON_OP", "!=", self.i]
+				)
+
+				tok_spaced = True
+
+				self.i+=2
+
 				continue
 
 			if char == '/': # try to build a comment

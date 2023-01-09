@@ -1,0 +1,105 @@
+{
+ "Expression @Idx[7]": {
+  "Import": {
+   "module": "<libc>",
+   "names": [
+    "printf"
+   ],
+   "index": 23
+  }
+ },
+ "Expression @Idx[50]": {
+  "Variable Definition": {
+   "type": "CONST",
+   "name": "main",
+   "value": {
+    "Anonymous Function": {
+     "parameters": [],
+     "body": {
+      "Expression @Idx[24]": {
+       "Variable Definition": {
+        "type": "CONST",
+        "name": "brokenresult",
+        "value": {
+         "Binary Operation !=": [
+          {
+           "Numerical Constant": 2
+          },
+          {
+           "Binary Operation -": [
+            {
+             "Numerical Constant": 123
+            },
+            {
+             "Numerical Constant": 1
+            }
+           ]
+          }
+         ]
+        },
+        "index": 86
+       }
+      },
+      "Expression @Idx[32]": {
+       "Variable Definition": {
+        "type": "CONST",
+        "name": "result",
+        "value": {
+         "Binary Operation or": [
+          {
+           "Numerical Constant": 123
+          },
+          {
+           "Numerical Constant": 0
+          }
+         ]
+        },
+        "index": 112
+       }
+      },
+      "Expression @Idx[40]": {
+       "Function Call": {
+        "name": "printf",
+        "arguments": [
+         {
+          "String Literal": "Result: %i\n"
+         },
+         {
+          "Variable Reference": {
+           "name": "result",
+           "index": 138
+          }
+         }
+        ],
+        "index": 115
+       }
+      },
+      "Expression @Idx[47]": {
+       "Function Call": {
+        "name": "printf",
+        "arguments": [
+         {
+          "String Literal": "Broken Result: %i\n"
+         },
+         {
+          "Variable Reference": {
+           "name": "brokenresult",
+           "index": 177
+          }
+         }
+        ],
+        "index": 147
+       }
+      }
+     }
+    }
+   },
+   "index": 192
+  }
+ },
+ "Expression @Idx[56]": {
+  "Export": [
+   "main"
+  ]
+ }
+}

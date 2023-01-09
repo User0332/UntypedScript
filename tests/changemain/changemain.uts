@@ -1,0 +1,14 @@
+import { puts } from "<libc>"
+
+const func = () => {
+	main = () => {  } // illegal expression because funcs aren't hoisted and main is defined later
+					  // also helps to keeps things safe
+}
+
+let main = () => {
+	func()
+	main()
+}
+
+export { main }
+

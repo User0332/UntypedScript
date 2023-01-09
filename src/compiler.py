@@ -52,16 +52,19 @@ class Compiler:
 	#variable and place it in a symbol table
 	def declare_variable(self, node: dict):
 		name: str = node["name"]
-		dtype: str = node["type"]
+		_type: str = node["type"]
 
 		self.bssinstr(f"_{name} resb 4")
-		self.symbols.declare(name, dtype, 4, f"_{name}")
+		self.symbols.declare(name, _type, 4, f"_{name}")
 
 	def define_variable(self, node: dict):
 		name: str = node["name"]
-		dtype: str = node["type"]
+		_type: str = node["type"]
 		value: dict = node["value"]
 		index: int = node["index"]
+
+		self.symbols.declare(name, _type, 4, f"_{name}")
+		self.symbols.assign(name, value, index)
 
 		if value.get("Anonymous Function") is not None:
 			value = value["Anonymous Function"]
@@ -88,9 +91,6 @@ class Compiler:
 				throw("UTSC 303: Only constant numerical/function/string values allowed in global scope", code)
 
 			self.datainstr(f"_{name} db {value}")
-
-		self.symbols.declare(name, dtype, 4, f"_{name}")
-		self.symbols.assign(name, value, index)
 	#
 
 	def import_names(self, node: dict):
@@ -158,7 +158,7 @@ class Compiler:
 				code = get_code(self.source, node["index"])
 				throw("UTSC 304: Assignments not allowed in global scope.", code)
 			else:
-				throw(f"UTSC 305: Unimplemented or Invalid AST Node '{key}'")
+				throw(f"UTSC 305: Unimplemented or Invalid AST Node '{key}' (global scope)")
 
 		return self.asm
 	#
@@ -208,34 +208,74 @@ class FunctionCompiler(Compiler):
 				op = key.removeprefix("Binary Operation ")
 
 				self.generate_expression(node[0])
-				self.instr("mov ebx, eax") #save result
+				self.instr("push eax") #save result
 				self.generate_expression(node[1])
+				self.instr("pop ebx") # load left node result into ebx
 
-				if op == "/": #integer division
+				if op == '/': #integer division
+					# switch registers
 					self.instr("push eax")
 					self.instr("mov eax, ebx")
 					self.instr("pop ebx")
+					self.instr("xor edx, edx")
 					self.instr("idiv ebx")
-				elif op == "%": #modulo
+				elif op == '%': #modulo
+					# switch registers
 					self.instr("push eax")
 					self.instr("mov eax, ebx")
 					self.instr("pop ebx")
+					self.instr("xor edx, edx")
 					self.instr("idiv ebx")
 					self.instr("mov eax, edx")
 				else:
-					if op == "+": #addition
+					if op == '+': #addition
 						self.instr("add ebx, eax")
-					elif op == "-": #subtraction
+						self.instr("mov eax, ebx")
+					elif op == '-': #subtraction
 						self.instr("sub ebx, eax")
-					elif op == "*": #integer multiplication
+						self.instr("mov eax, ebx")
+					elif op == '*': #integer multiplication
 						self.instr("imul ebx, eax")
+						self.instr("mov eax, ebx")
+					elif op in ('>', '<', ">=", "<=", "==", "!="):
+						self.instr("cmp ebx, eax")
 
-					self.instr("mov eax, ebx")
+						if op == '>':
+							self.instr("setg al")
+						elif op == '<':
+							self.instr("setl al")
+						elif op == ">=":
+							self.instr("setge al")
+						elif op == "<=":
+							self.instr("setle al")
+						elif op == "==":
+							self.instr("sete al")
+						elif op == "!=":
+							self.instr("setne al")
+
+						self.instr("movzx eax, al")
+					else:
+						self.instr("cmp ebx, 0")
+						self.instr("setne bl")
+						self.instr("movzx ebx, bl")
+						self.instr("cmp eax, 0")
+						self.instr("setne al")
+						self.instr("movzx eax, al")						
+
+						if op == "and":
+							self.instr("and eax, ebx")
+						elif op == "or":
+							self.instr("or eax, ebx")
 			elif key.startswith("Unary Operation"):
 				op = key.removeprefix("Unary Operation ")
-				if op == "-":
+				if op == '-':
 					self.generate_expression(node)
 					self.instr("neg eax")
+				elif op == "not":
+					self.generate_expression(node)
+					self.instr("cmp eax, 0")
+					self.instr("sete al")
+					self.instr("movzx eax, al")
 			elif key.startswith("Numerical Constant"):
 				if node == 0:
 					self.instr(f"xor eax, eax")
@@ -246,7 +286,9 @@ class FunctionCompiler(Compiler):
 				name = node["name"]
 				index  = node["index"]
 
-				memaddr = self.symbols.get(name, index)["address"]
+				try: memaddr = self.symbols.get(name, index)["address"]
+				except TypeError: return # doesn't exist, error was thrown on utils.py side, just exit compilation
+
 				self.instr(f"mov eax, [{memaddr}]")
 			elif key.startswith("Anonymous Function"):
 				params: list[str] = node["parameters"]
@@ -271,14 +313,17 @@ class FunctionCompiler(Compiler):
 				self.outer.hidden_counter+=1
 			elif key.startswith("Function Call"):
 				self.call_func(node)
+			else:
+				throw(f"UTSC 308: Invalid target for expression '{key}'")
 
 	def call_func(self, node: dict):
 		name: str = node["name"]
 		args: list[dict] = node["arguments"]
 		index: int = node["index"]
 
-		addr: str = self.symbols.get(name, index)["address"] # make sure func exists
-
+		try: addr: str = self.symbols.get(name, index)["address"] # make sure func exists
+		except TypeError: return # doesn't exist, error was thrown on utils.py side, just exit compilation
+		
 		if addr.startswith("ebp"): # if addr stored on stack ptr, dereference the ptr
 			addr = f"[{addr}]"
 
@@ -295,20 +340,20 @@ class FunctionCompiler(Compiler):
 	#variable and place it in a symbol table
 	def declare_variable(self, node: dict):
 		name: str = node["name"]
-		dtype: str = node["type"]
+		_type: str = node["type"]
 
-		self.symbols.declare(name, dtype, 4, f"ebp-{self.allocated_bytes}")
+		self.symbols.declare(name, _type, 4, f"ebp-{self.allocated_bytes}")
 
 		self.allocated_bytes+=4
 
 	def define_variable(self, node: dict):
 		name: str = node["name"]
-		dtype: str = node["type"]
+		_type: str = node["type"]
 		value: dict = node["value"]
 		index: int = node["index"]
 
 		#add instrs
-		self.symbols.declare(name, dtype, 4, f"ebp-{self.allocated_bytes}")
+		self.symbols.declare(name, _type, 4, f"ebp-{self.allocated_bytes}")
 		memaddr = self.symbols.assign(name, value, index)
 		self.generate_expression(value)
 		self.instr(f"mov [{memaddr}], eax")
@@ -362,6 +407,23 @@ class FunctionCompiler(Compiler):
 		self.traverse(else_body)		
 		self.instr(f"{contlabel}:")
 
+	def generate_while(self, node: dict):
+		condition: dict = node["condition"]
+		body: dict = node["body"]
+
+		whilelabel = f".while.{self.outer.hidden_counter}"
+		contlabel = f".cont.{self.outer.hidden_counter}"
+		self.outer.hidden_counter+=1
+
+		self.instr(f"{whilelabel}:")
+		self.generate_expression(condition)
+		self.instr("cmp eax, 0")
+		self.instr(f"je {contlabel}")
+		self.traverse(body)
+		self.instr(f"jmp {whilelabel}")
+		self.instr(f"{contlabel}:")
+
+
 	#Traverses the AST and passes off each node to a specialized function
 	def traverse(self, top: dict=None):
 		key: str; node: dict
@@ -383,6 +445,8 @@ class FunctionCompiler(Compiler):
 				self.return_val(node)
 			elif key.startswith("Conditional Statement"):
 				self.generate_conditional(node)
+			elif key.startswith("While Loop"):
+				self.generate_while(node)
 			else:
 				throw(f"UTSC 305: Unimplemented or Invalid AST Node '{key}'")
 

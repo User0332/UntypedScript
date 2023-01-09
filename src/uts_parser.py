@@ -83,7 +83,7 @@ class VariableAccessNode(Node):
 		self.idx = var_tok.idx
 
 	def __repr__(self):
-		return f'{{"Variable Reference" : {{ "name" : "{self.name}", "index" : {self.idx} }} }}'
+		return f'{{"Variable Reference": {{ "name" : "{self.name}", "index" : {self.idx} }} }}'
 
 class ConditionalStatementNode(Node):
 	def __init__(self, condition: Node, if_body: dict, else_body: dict):
@@ -92,7 +92,15 @@ class ConditionalStatementNode(Node):
 		self.else_body = dumps(else_body)
 
 	def __repr__(self):
-		return f'{{"Conditional Statement" : {{ "condition" : {self.condition}, "if" : {self.if_body}, "else" : {self.else_body} }} }}'
+		return f'{{"Conditional Statement": {{ "condition" : {self.condition}, "if" : {self.if_body}, "else" : {self.else_body} }} }}'
+
+class WhileLoopNode(Node):
+	def __init__(self, condition: Node, body: dict):
+		self.condition = condition
+		self.body = dumps(body)
+
+	def __repr__(self) -> str:
+		return f'{{ "While Loop": {{ "condition": {self.condition}, "body": {self.body} }} }}'
 
 class UnimplementedNode(Node):
 	def __init__(self):
@@ -259,6 +267,8 @@ class Parser:
 		if func_b is None:
 			func_b = func_a
 
+
+		
 		left = func_a()
 
 		while self.current.value in ops:
@@ -345,7 +355,7 @@ class Parser:
 
 	#Grammar Term
 	def term(self):
-		return self.bin_op(self.factor, ('*', '/'))
+		return self.bin_op(self.factor, ('*', '/', '%'))
 		
 	#Grammar Atom
 	def atom(self):
@@ -355,6 +365,49 @@ class Parser:
 
 		if current.type == "IDENTIFIER":
 			self.advance()
+			
+			if self.current.value == '=':
+				self.advance()
+				expr = self.expr()
+				if expr is None:
+					self.decrement()
+
+					code = get_code(self.code, self.current.idx)
+					
+					throw(f"UTSC 203: Expected expression after assignment operator '=', got {fmt_type(self.current.type)}", code)
+					
+					self.advance()
+					return UnimplementedNode()
+				else:
+					return VariableAssignmentNode(current.value, expr, self.current.idx)
+			if self.current.value in ('+', '-', '/', '*'): # += -= *= /= assignment
+				op = self.current
+				self.advance()
+				
+				if self.current.value == '=':
+					self.advance()
+					expr = self.expr()
+					if expr is None:
+						self.decrement()
+
+						code = get_code(self.code, self.current.idx)
+						
+						throw(f"UTSC 203: Expected expression after assignment operator '{op.value}=', got {fmt_type(self.current.type)}", code)
+						
+						self.advance()
+						return UnimplementedNode()
+					else:
+						return VariableAssignmentNode(
+							current.value,
+							BinOpNode(
+								VariableAccessNode(current),
+								op,
+								expr
+							),
+							self.current.idx
+						)
+
+				self.decrement() # back up to operator token
 
 			if self.current.value != '(':
 				return VariableAccessNode(current)
@@ -461,6 +514,9 @@ class Parser:
 		elif current.value == "if":
 			self.advance()
 			return self.conditional_expr()
+		elif current.value == "while":
+			self.advance()
+			return self.while_expr()
 
 		elif self.in_func and self.current.type == "RETURN":
 			self.advance()
@@ -552,7 +608,7 @@ class Parser:
 			if_body = self.get_body()
 		else:
 			if_nodes = self.expr()
-			if_body = {f"Expression @Idx[{self.idx}]" : loads(str(if_nodes))}
+			
 			if if_nodes is None:
 				code = get_code(self.code, self.current.idx)
 
@@ -560,6 +616,8 @@ class Parser:
 
 				self.advance()
 				return UnimplementedNode()
+
+			if_body = loads(str(if_nodes))
 
 		self.skip_newlines()
 			
@@ -594,6 +652,40 @@ class Parser:
 			else_body = {}
 		
 		return ConditionalStatementNode(condition, if_body, else_body)
+
+	def while_expr(self):
+		condition = self.expr()
+
+		if condition is None:
+			code = get_code(self.code, self.current.idx)
+
+			throw(f"UTSC 203: Expected expression, got {fmt_type(self.current.type)}", code)
+
+			self.advance()
+			return UnimplementedNode()
+
+		self.skip_newlines()
+
+		if self.current.value == '{':
+			self.advance()
+			body = self.get_body()
+		else:
+			body_nodes = self.expr()
+
+			if body_nodes is None:
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected expression, got {fmt_type(self.current.type)}", code)
+
+				self.advance()
+				return UnimplementedNode()
+
+			body = loads(str(body_nodes))
+
+		return WhileLoopNode(
+			condition,
+			body
+		)
 	
 	def comp_expr(self):
 		if self.current.value == "not":
@@ -603,7 +695,7 @@ class Parser:
 			node = self.comp_expr()
 			return UnaryOpNode(op, node)
 
-		return self.bin_op(self.num_expr, ("==", "!=", "<", ">", "<=", ">=", "and", "or"))
+		return self.bin_op(self.num_expr, ("==", "!=", '<', '>', "<=", ">=", "and", "or"))
 		
 
 	def num_expr(self):
@@ -639,7 +731,7 @@ class Parser:
 
 				return VariableDeclarationNode(vartype, name)
 
-			elif self.current.value == "=":
+			elif self.current.value == '=':
 				self.advance()
 				expr = self.expr()
 
@@ -661,26 +753,6 @@ class Parser:
 				
 				self.advance()
 				return UnimplementedNode()
-
-		elif self.current.type == "IDENTIFIER":
-			name = self.current.value
-			self.advance()
-			if self.current.value == "=":
-				self.advance()
-				expr = self.expr()
-				if expr is None:
-					self.decrement()
-
-					code = get_code(self.code, self.current.idx)
-					
-					throw(f"UTSC 203: Expected expression after assignment operator '=', got {fmt_type(self.current.type)}", code)
-					
-					self.advance()
-					return UnimplementedNode()
-				else:
-					return VariableAssignmentNode(name, expr, self.current.idx)
-			else:
-				self.decrement() #move index pointer back to the identifier
 		elif self.current.type == "NEWLINE":
 			return None
 

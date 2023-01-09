@@ -8,9 +8,9 @@ Boils down to assembly code. As per the name, includes no form of a type system 
 import puts from "<libc>"
 
 const main = () => {
-    puts("Hello World!")
+	puts("Hello World!")
 
-    return 0
+	return 0
 }
 
 export { main }
@@ -23,24 +23,18 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
 - Test on Linux system
 - Error throwing that actually shows the correct line
 - Solve recursion errors in parser
-- Standardize error numbers later:
-    - 0XX for `utsc.py`
-    - 1XX for lexer
-    - 2XX for the parser
-    - 3XX for the compiler
-    - 4XX for other module (optimizer, preprocessor, cleaner, etc.)
 - Remove weird parser bugs that result in a lot of errors
 - Refs/Derefs/Pointers
-- If/Else Statements
 - Elif Blocks
-- While loops
 - For loops
 - Being able to 'call' expressions - i.e. call an anonymous function - `(() => puts("hi"))()`
+	- Recycle memory used by no-longer-referenced anonymous functions
 - Namespaces
-- Object creation syntax
-- Object utils/dynamic objects
-- Object integration with C structs
-- Object destructuring
+- Maybe objects?
+	- Object creation syntax
+	- Object utils/dynamic objects
+	- Object integration with C structs
+	- Object destructuring
 - Maybe type hinting or a VSCode extension
 
 ## Notes

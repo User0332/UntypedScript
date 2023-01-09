@@ -1,6 +1,6 @@
 import { puts } from "<libc>"
 
-let main = () => {
+const main = () => {
 	const x = 1
 	const y = 1
 
