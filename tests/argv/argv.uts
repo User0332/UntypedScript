@@ -1,2 +1,20 @@
-// Can only be executed once x[0] derefs are implemented
-// An advanced version would include a loop
+import { printf } from "<libc>"
+import { NORMAL_ARRAY_BYTE_OFFSET } from "uts-info"
+
+const main = (argc, argv) => {
+	let i = 0
+	let arg
+
+	printf("argc = %i\n", argc)
+
+	while (i < argc)
+	{
+		arg = deref (argv + (i*NORMAL_ARRAY_BYTE_OFFSET)) // basically arg = argv[i], hopefully implemented in future
+		printf("argv[%i] = %s\n", i, arg)
+		i+=1
+	}
+
+	return 0
+}
+
+export { main }

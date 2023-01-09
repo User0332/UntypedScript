@@ -33,7 +33,9 @@ class Lexer:
 			"and": "LOGICAL_OP",
 			"if": "CONDITIONAL_KEYWD",
 			"else": "CONDITIONAL_KEYWD",
-			"asm": "INLINE_ASSEMBLY"
+			"asm": "INLINE_ASSEMBLY",
+			"ref": "ADDR_OP",
+			"deref": "ADDR_OP"
 		}
 		self.SPECIALS = "()[]{}.:,;"
 		self.OPERATORS = (
@@ -287,7 +289,9 @@ class Lexer:
 			while char != '\n':
 				self.i+=1
 
-				char = self.code[self.i]
+				try: char = self.code[self.i]
+				except IndexError:
+					return True
 
 			return True
 

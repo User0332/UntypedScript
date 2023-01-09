@@ -7,7 +7,7 @@ from utils import (
 
 from ast_preprocessor import SyntaxTreePreproccesor
 
-from os.path import isfile
+from os.path import isfile, normpath
 from sys import platform as sys_platform
 from subprocess import call as subproc_call
 
@@ -22,7 +22,7 @@ class Compiler:
 		self.evaluator = SyntaxTreePreproccesor(ast)
 		self.source = code
 		self.hidden_counter = 0
-		self.compiler_path = compiler_path
+		self.compiler_path = compiler_path+'/..' if compiler_path.endswith("src") else compiler_path # this will point to the src folder, we want it to point to root proj directory
 		self.file_path = file_path
 		self.link_with: list[str] = []
 
@@ -99,8 +99,8 @@ class Compiler:
 
 		uts_mod = f"{self.file_path}/{module}.uts"
 		asm_mod = f"{self.file_path}/{module}.asm"
-		obj_mod = f"{self.file_path}/{module}.o"
-		lib_obj_mod = f"{self.compiler_path}/lib/{module}.o"
+		obj_mod = normpath(f"{self.file_path}/{module}.o")
+		lib_obj_mod = normpath(f"{self.compiler_path}/lib/{module}.o")
 
 		if sys_platform == "win32":
 			shell = ["powershell"]
@@ -121,8 +121,10 @@ class Compiler:
 		# now make sure the object file is actually here
 		if isfile(lib_obj_mod):
 			self.link_with.append(lib_obj_mod)
+			print(f"Linking with '{lib_obj_mod}'")
 		elif isfile(obj_mod):
 			self.link_with.append(obj_mod)
+			print(f"Linking with '{obj_mod}'")
 		elif module != "<libc>": # if module doesn't exist...
 			code = get_code(self.source, node["index"])
 
@@ -276,20 +278,21 @@ class FunctionCompiler(Compiler):
 					self.instr("cmp eax, 0")
 					self.instr("sete al")
 					self.instr("movzx eax, al")
+			elif key.startswith("Addr Operation"):
+				op = key.removeprefix("Addr Operation ")
+
+				if op == "ref":
+					self.reference_var(node["name"], node["index"], lea=True)
+				elif op == "deref":
+					self.generate_expression(node)
+					self.instr("mov eax, [eax]")
 			elif key.startswith("Numerical Constant"):
 				if node == 0:
 					self.instr(f"xor eax, eax")
 					continue
 				self.instr(f"mov eax, {node}")
 			elif key.startswith("Variable Reference"):
-				# FIX: this throws error if var doesn't exist...
-				name = node["name"]
-				index  = node["index"]
-
-				try: memaddr = self.symbols.get(name, index)["address"]
-				except TypeError: return # doesn't exist, error was thrown on utils.py side, just exit compilation
-
-				self.instr(f"mov eax, [{memaddr}]")
+				self.reference_var(node["name"], node["index"])
 			elif key.startswith("Anonymous Function"):
 				params: list[str] = node["parameters"]
 				body: dict = node["body"]
@@ -315,6 +318,16 @@ class FunctionCompiler(Compiler):
 				self.call_func(node)
 			else:
 				throw(f"UTSC 308: Invalid target for expression '{key}'")
+
+	def reference_var(self, name: str, index: int, lea: bool=False):
+		try: memaddr = self.symbols.get(name, index)["address"]
+		except TypeError: return # doesn't exist, error was thrown on utils.py side, just exit compilation
+
+		if lea:
+			self.instr(f"lea eax, [{memaddr}]")
+			return
+
+		self.instr(f"mov eax, [{memaddr}]")
 
 	def call_func(self, node: dict):
 		name: str = node["name"]
@@ -422,7 +435,6 @@ class FunctionCompiler(Compiler):
 		self.traverse(body)
 		self.instr(f"jmp {whilelabel}")
 		self.instr(f"{contlabel}:")
-
 
 	#Traverses the AST and passes off each node to a specialized function
 	def traverse(self, top: dict=None):

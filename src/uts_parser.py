@@ -50,6 +50,22 @@ class UnaryOpNode(Node):
 	def __repr__(self):
 		return f'{{"Unary Operation {self.op.value}" : {self.node} }}'
 
+class RefOpNode(Node):
+	def __init__(self, ident: str, idx: int):
+		self.ident = ident
+		self.idx = idx
+
+	def __repr__(self):
+		return f'{{ "Addr Operation ref": {{ "name": {self.ident!r}, "index": {self.idx} }} }}'
+
+class DerefOpNode(Node):
+	def __init__(self, addr_expr: Node):
+		self.expr = addr_expr
+
+	def __repr__(self):
+		return f'{{ "Addr Operation deref": {self.expr} }}'
+
+
 class VariableDeclarationNode(Node):
 	def __init__(self, dtype: str, name: str):
 		self.dtype = dtype
@@ -689,11 +705,33 @@ class Parser:
 	
 	def comp_expr(self):
 		if self.current.value == "not":
-			op = self.current
 			self.advance()
 
 			node = self.comp_expr()
-			return UnaryOpNode(op, node)
+			return UnaryOpNode("not", node)
+
+		elif self.current.value == "ref":
+			self.advance()
+
+			if self.current.type != "IDENTIFIER":
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected identifier after address operator 'ref', got {fmt_type(self.current.type)} instead", code)
+
+			ident = self.current
+
+			self.advance() # pass identifier
+
+			return RefOpNode(ident.value, ident.idx)
+
+		elif self.current.value == "deref":
+			self.advance()
+
+			expr = self.expr()
+
+			return DerefOpNode(expr)
+
+
 
 		return self.bin_op(self.num_expr, ("==", "!=", '<', '>', "<=", ">=", "and", "or"))
 		

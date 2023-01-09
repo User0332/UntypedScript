@@ -1,0 +1,5 @@
+const NORMAL_ARRAY_BYTE_OFFSET = 4
+
+export {
+    NORMAL_ARRAY_BYTE_OFFSET
+}
