@@ -1,5 +1,8 @@
 import { printf } from "<libc>"
-import { NORMAL_ARRAY_BYTE_OFFSET } from "uts-info"
+import {
+	NORMAL_ARRAY_BYTE_OFFSET, // actuall defined in 'uts-info', but linking with that will cause a linker error (double symbol declaration) - FIX!
+	value_at 
+} from "temp-utils"
 
 const main = (argc, argv) => {
 	let i = 0
@@ -9,7 +12,9 @@ const main = (argc, argv) => {
 
 	while (i < argc)
 	{
-		arg = deref (argv + (i*NORMAL_ARRAY_BYTE_OFFSET)) // basically arg = argv[i], hopefully implemented in future
+		// SEE LIB/ FOR ACUTAL SRC OF value_at
+		// value_at segfaults for some reason
+		arg = value_at(argv, i) // basically arg = argv[i], hopefully implemented in future
 		printf("argv[%i] = %s\n", i, arg)
 		i+=1
 	}

@@ -4,6 +4,7 @@ UTSC/Other (0XX)
 3 File not found
 4 Command line argument error/warning
 5 Parser ran into Python error (specific to implementation, hopefully fixed in the future)
+6 Config Error
 
 Lexer (1XX)
 1 Invalid escape code in string

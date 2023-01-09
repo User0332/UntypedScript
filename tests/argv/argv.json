@@ -1,0 +1,171 @@
+{
+ "Expression @Idx[7]": {
+  "Import": {
+   "module": "<libc>",
+   "names": [
+    "printf"
+   ],
+   "index": 23
+  }
+ },
+ "Expression @Idx[19]": {
+  "Import": {
+   "module": "temp-utils",
+   "names": [
+    "NORMAL_ARRAY_BYTE_OFFSET",
+    "value_at"
+   ],
+   "index": 203
+  }
+ },
+ "Expression @Idx[90]": {
+  "Variable Definition": {
+   "type": "CONST",
+   "name": "main",
+   "value": {
+    "Anonymous Function": {
+     "parameters": [
+      "argc",
+      "argv"
+     ],
+     "body": {
+      "Expression @Idx[35]": {
+       "Variable Definition": {
+        "type": "LET",
+        "name": "i",
+        "value": {
+         "Numerical Constant": 0
+        },
+        "index": 258
+       }
+      },
+      "Expression @Idx[38]": {
+       "Variable Declaration": {
+        "type": "LET",
+        "name": "arg"
+       }
+      },
+      "Expression @Idx[46]": {
+       "Function Call": {
+        "name": "printf",
+        "arguments": [
+         {
+          "String Literal": "argc = %i\n"
+         },
+         {
+          "Variable Reference": {
+           "name": "argc",
+           "index": 292
+          }
+         }
+        ],
+        "index": 270
+       }
+      },
+      "Expression @Idx[83]": {
+       "While Loop": {
+        "condition": {
+         "Binary Operation <": [
+          {
+           "Variable Reference": {
+            "name": "i",
+            "index": 307
+           }
+          },
+          {
+           "Variable Reference": {
+            "name": "argc",
+            "index": 311
+           }
+          }
+         ]
+        },
+        "body": {
+         "Expression @Idx[67]": {
+          "Variable Assignment": {
+           "name": "arg",
+           "value": {
+            "Function Call": {
+             "name": "value_at",
+             "arguments": [
+              {
+               "Variable Reference": {
+                "name": "argv",
+                "index": 418
+               }
+              },
+              {
+               "Variable Reference": {
+                "name": "i",
+                "index": 424
+               }
+              }
+             ],
+             "index": 409
+            }
+           },
+           "index": 486
+          }
+         },
+         "Expression @Idx[76]": {
+          "Function Call": {
+           "name": "printf",
+           "arguments": [
+            {
+             "String Literal": "argv[%i] = %s\n"
+            },
+            {
+             "Variable Reference": {
+              "name": "i",
+              "index": 515
+             }
+            },
+            {
+             "Variable Reference": {
+              "name": "arg",
+              "index": 518
+             }
+            }
+           ],
+           "index": 489
+          }
+         },
+         "Expression @Idx[81]": {
+          "Variable Assignment": {
+           "name": "i",
+           "value": {
+            "Binary Operation +": [
+             {
+              "Variable Reference": {
+               "name": "i",
+               "index": 525
+              }
+             },
+             {
+              "Numerical Constant": 1
+             }
+            ]
+           },
+           "index": 529
+          }
+         }
+        }
+       }
+      },
+      "Expression @Idx[87]": {
+       "Return Statement": {
+        "Numerical Constant": 0
+       }
+      }
+     }
+    }
+   },
+   "index": 545
+  }
+ },
+ "Expression @Idx[96]": {
+  "Export": [
+   "main"
+  ]
+ }
+}

@@ -1,5 +1,4 @@
 {
-	"shellPath": "powershell",
-	"nasmPath": null,
-	"gccPath": null
+	"nasmPath": "C:\\Users\\carlf\\AppData\\Local\\bin\\NASM\\nasm.exe",
+	"gccPath": "C:\\MinGW\\bin\\gcc.exe"
 }

@@ -1,5 +1,8 @@
 from argparse import ArgumentParser
+from json import load
+from json.decoder import JSONDecodeError
 
+from os.path import isfile
 from sys import (
 	stderr, 
 	exit
@@ -90,6 +93,29 @@ def checkfailure():
 	exit(1) if thrown else None
 #
 
+def import_config(fname: str) -> dict:
+	if not isfile(fname):
+		throw(f"Fatal Error UTSC 006: Config file {fname} does not exist!")
+		return
+		
+	with open(fname, 'r') as f:
+		try: conf = load(f)
+		except JSONDecodeError:
+			throw(f"Fatal Error UTSC 006: Config file {fname} is not valid JSON!")
+			return
+
+	try: # validate keys
+		assert isfile(conf["nasmPath"])
+		assert isfile(conf["gccPath"])
+	except (AssertionError, KeyError):
+		throw(
+			f"Fatal Error UTSC 006: Either some config keys were missing, "
+			"config values are not the correct type, "
+			"or the config values do not exist as files!"
+		)
+		return
+
+	return conf
 
 # Custom Exceptions used in the ast preprocessor/lexer
 class SigNonConstantNumericalExpressionException(Exception): pass

@@ -56,7 +56,7 @@ class RefOpNode(Node):
 		self.idx = idx
 
 	def __repr__(self):
-		return f'{{ "Addr Operation ref": {{ "name": {self.ident!r}, "index": {self.idx} }} }}'
+		return f'{{ "Addr Operation ref": {{ "name": "{self.ident}", "index": {self.idx} }} }}'
 
 class DerefOpNode(Node):
 	def __init__(self, addr_expr: Node):

@@ -10,7 +10,8 @@ from utils import (
 	throw, 
 	warn, 
 	throwerrors, 
-	printwarnings, 
+	printwarnings,
+	import_config,
 	CYAN, 
 	END, 
 	ArgParser,
@@ -50,8 +51,6 @@ from sys import (
 
 #Indepenedent Environment Constants
 COMPILER_EXE_PATH = dirname(argv[0]).replace('\\', '/')
-DEFAULT_MODIFIER_PATH = f"{COMPILER_EXE_PATH}/modifiers"
-DEFAULT_IMPORT_PATH = f"{COMPILER_EXE_PATH}/imports"
 #
 
 
@@ -61,6 +60,7 @@ def main():
 	argparser.add_argument("-d", "--dump", type=str, help="show AST, tokens, disassembly, or ALL")
 	argparser.add_argument("-s", "--suppresswarnings", help="suppress all warnings", action="store_true", default=False)
 	argparser.add_argument("filename", nargs='?', default='', type=str, help='Source file')
+	argparser.add_argument("-f", "--fmt", type=str, default="win32", help="format to compile to")
 	argparser.add_argument("-O", "--optimization", type=int, default=0, help="Optimization level to apply. Can be 0 (default), 1, or 2")
 	outgroup = argparser.add_mutually_exclusive_group()
 	outgroup.add_argument("-o", "--out", type=str, help="output filename")
@@ -75,6 +75,7 @@ def main():
 	executable = args.executable
 	runfile = args.run
 	compile_optimizations = args.optimization
+	fmt = args.fmt
 	
 	try:
 		show = args.dump.lower()
@@ -100,7 +101,7 @@ def main():
 			code = f.read()
 	except OSError:
 		throw("Fatal Error UTSC 003: Either the specified source file could not be found, or permission was denied.")
-	
+
 	#Dependent Constants
 	INPUT_FILE_PATH = dirname(file).replace("\\", "/")
 	if INPUT_FILE_PATH == '':
@@ -112,14 +113,18 @@ def main():
 	basesource = ".".join(basename(file).split(".")[:-1])
 
 	if args.out == None:
-		out = basesource+".asm"
-		if not (executable or runfile): warn("UTSC 004: -o option unspecified, assuming assembly", f">{out}\n")
-	elif not args.out.endswith((".asm", ".lst", ".json")) and args.out != 'NULL':
-		warn(f"UTSC 004: '{args.out}' is an invalid output file. Switching to assembly by default.")
-		out = basesource+".asm"
+		out = basesource+".o"
+		if not (executable or runfile): warn("UTSC 004: -o option unspecified, assuming object file", f">{out}\n")
+	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll")) and args.out != 'NULL':
+		warn(f"UTSC 004: '{args.out}' is an invalid output file. Switching to object file by default.")
+		out = basesource+".o"
 	else:
 		out = args.out
 
+	if isfile("config.json"):
+		config = import_config("config.json")
+	else:
+		config = import_config(f"{COMPILER_EXE_PATH}/../conf/config.json")
 			
 	throwerrors()
 	if warnings: printwarnings()
@@ -159,7 +164,6 @@ def main():
 		if warnings: printwarnings()
 		
 		return 1
-		
 
 	raw_ast = ASTCleaner(raw_ast).clean()
 
@@ -197,39 +201,68 @@ def main():
 		print("Disassembly:\n")
 		print(asm)
 
-	if out.endswith(".asm"):
-		with open(out, "w") as f:
+	if out.endswith((".asm", ".o", ".dll")):
+		asmname = ''.join(out.split('.')[:-1])+".asm"
+
+		with open(asmname, 'w') as f:
 			f.write(asm)
 
-	if runfile or executable:
-		try:
-			if sys_platform == "win32":
-				subprocess_call(
-					[
-						"powershell", 
-						f"{COMPILER_EXE_PATH}/assemble.ps1", 
-						out.removesuffix(".asm"),
-						*compiler.link_with
-					]
-				)
-			else:
-				subprocess_call(
-					[
-						"/usr/bin/bash", 
-						f"{COMPILER_EXE_PATH}/assemble.sh", 
-						out.removesuffix(".asm")
-					]
-				) # UNTESTED
+	if out.endswith((".o", ".dll")):
+		objname = ''.join(out.split('.')[:-1])+".o"
+
+		try: subprocess_call(
+			[
+				config["nasmPath"], 
+				asmname, 
+				"-f", fmt, 
+				"-o", objname
+			]
+		)
 		except OSError as e:
-			throw(f"UTSC 003: assemble.ps1/sh is missing, destroyed, or broken - python: {e}")
+			throw(f"UTSC 003: An error occurred while trying to compile '{out}' - python: {e}")
+
+		try: os_remove(asmname)
+		except FileNotFoundError: pass
+
+	if out.endswith(".dll"):
+		try: subprocess_call(
+			[
+				config["gccPath"],
+				objname,
+				"-shared",
+				"-o", out,
+				*compiler.link_with
+			]
+		)
+		except OSError as e:
+			throw(f"UTSC 003: An error occurred while trying to compile '{out}' - python: {e}")
+
+		try: os_remove(objname)
+		except FileNotFoundError: pass
+
+	if runfile or executable:
+		exepath = out.removesuffix("o")+"exe"
+
+		try: subprocess_call(
+			[
+				config["gccPath"],
+				out,
+				*compiler.link_with,
+				"-o", exepath
+			]
+		)
+		except OSError as e:
+			throw(f"UTSC 003: An error occurred while trying to compile '{out}' - python: {e}")
+
+		try: os_remove(objname)
+		except FileNotFoundError: pass
 
 	if runfile:
-		exe = out.removesuffix("asm")+"exe"
 		try:
-			ret_code = subprocess_call([exe]) # maybe print this later?
-			os_remove(exe)
+			ret_code = subprocess_call([exepath]) # maybe print this later?
+			os_remove(exepath)
 		except OSError as e:
-			throw(f"UTSC 003: A file went missing while trying to run & remove {exe} (from {file}) - python: {e}")
+			throw(f"UTSC 003: A file went missing while trying to run & remove {exepath} (from {file}) - python: {e}")
 		
 		
 
