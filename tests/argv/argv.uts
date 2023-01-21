@@ -1,7 +1,7 @@
 import { printf } from "<libc>"
+import { NORMAL_ARRAY_BYTE_OFFSET } from "uts-info"
 import {
-	NORMAL_ARRAY_BYTE_OFFSET, // actuall defined in 'uts-info', but linking with that will cause a linker error (double symbol declaration) - FIX!
-	value_at 
+ 	value_at 
 } from "temp-utils"
 
 const main = (argc, argv) => {
@@ -12,8 +12,6 @@ const main = (argc, argv) => {
 
 	while (i < argc)
 	{
-		// SEE LIB/ FOR ACUTAL SRC OF value_at
-		// value_at segfaults for some reason
 		arg = value_at(argv, i) // basically arg = argv[i], hopefully implemented in future
 		printf("argv[%i] = %s\n", i, arg)
 		i+=1

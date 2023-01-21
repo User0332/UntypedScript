@@ -27,5 +27,7 @@ Compiler (3XX)
 6 Tried to reassign constant variable
 7 Name Error
 8 Invalid target for expression (ex. i = return)
+9 Multiple symbol definition
+10 Cannot account for multiple symbol definitions
 
 Other Modules (4XX)

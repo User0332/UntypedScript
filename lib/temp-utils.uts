@@ -1,9 +1,9 @@
 import { NORMAL_ARRAY_BYTE_OFFSET } from "uts-info"
 
 const value_at = (arr, i) => {
-    return deref( arr+(i*NORMAL_ARRAY_BYTE_OFFSET) )
+	return deref( arr+(i*NORMAL_ARRAY_BYTE_OFFSET) )
 }
 
 export {
-    value_at
+	value_at
 }

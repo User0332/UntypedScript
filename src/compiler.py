@@ -1,13 +1,15 @@
 from utils import (
 	get_code,
 	throw,
+	warn,
 	SymbolTable,
 	SigNonConstantNumericalExpressionException
 )
 
 from ast_preprocessor import SyntaxTreePreproccesor
 
-from os.path import isfile, normpath
+from os import remove as os_remove
+from os.path import isfile, normpath, dirname, basename
 from sys import platform as sys_platform
 from subprocess import call as subproc_call
 
@@ -25,6 +27,8 @@ class Compiler:
 		self.compiler_path = compiler_path+'/..' if compiler_path.endswith("src") else compiler_path # this will point to the src folder, we want it to point to root proj directory
 		self.file_path = file_path
 		self.link_with: list[str] = []
+		self.exports: list[str] = []
+		self.imports: list[str] = []
 
 		# add more options - i.e. architecture from cmd line args
 		self.platform = "win32" if sys_platform == "win32" else "elf32"
@@ -97,10 +101,16 @@ class Compiler:
 		names: list[str] = node["names"]
 		module = node["module"]
 
+		do_not_add_to_link_with: list[str] = []
+
 		uts_mod = f"{self.file_path}/{module}.uts"
+		sym_exp_mod = f"{module}.exports"
 		asm_mod = f"{self.file_path}/{module}.asm"
-		obj_mod = normpath(f"{self.file_path}/{module}.o")
+		lib_uts_mod = f"{self.compiler_path}/lib/{module}.uts"
 		lib_obj_mod = normpath(f"{self.compiler_path}/lib/{module}.o")
+		obj_mod = normpath(f"{self.file_path}/{module}.o")
+
+		if (not isfile(uts_mod) and isfile(lib_uts_mod)): uts_mod = lib_uts_mod
 
 		if sys_platform == "win32":
 			shell = ["powershell"]
@@ -108,9 +118,39 @@ class Compiler:
 			shell = ["bash", "-c"]
 
 		if (isfile(uts_mod)): # if a .uts file, compile it
-			try: subproc_call([*shell, "utsc", "-o", asm_mod, uts_mod])
+			sym_exp_mod = f"{dirname(uts_mod)}/{sym_exp_mod}"
+
+			try:
+				subproc_call([*shell, "utsc", "-o", sym_exp_mod, uts_mod])
+				
+				try:
+					with open(sym_exp_mod, 'r') as f:
+						exports = f.read().splitlines()
+
+					with open(sym_exp_mod+".modules", 'r') as f:
+						imports = f.read().splitlines()
+				except FileNotFoundError:
+					raise ZeroDivisionError() # some random error to catch
+
+				for name in exports:
+					if name in self.symbols.symbols:
+						throw(f"UTSC 309: Name '{name}' was defined twice while trying to import from '{module}'")
+
+				for module in imports:
+					if module in self.imports:
+						do_not_add_to_link_with.append(module)
+			except ZeroDivisionError:
+				warn(f"UTSC 310: Could not check for symbol clashes while importing '{module}'")
 			except OSError:
 				throw(f"UTSC 301: Module '{module}' could not be compiled - utsc is not in PATH.")
+
+			try:
+				os_remove(sym_exp_mod)
+				os_remove(sym_exp_mod+".modules")
+			except FileNotFoundError: pass
+
+			subproc_call([*shell, "utsc", "-o", obj_mod, uts_mod])
+		elif module != "<libc>": warn(f"UTSC 310: Could not check for symbol clashes while importing '{module}'")
 
 		# make compiler config with NASM and GCC paths/ configured shell to use later
 		if (isfile(asm_mod)):
@@ -119,12 +159,9 @@ class Compiler:
 				throw(f"UTSC 301: Module '{module}' could not be compiled - nasm is not in PATH.")
 
 		# now make sure the object file is actually here
-		if isfile(lib_obj_mod):
-			self.link_with.append(lib_obj_mod)
-			print(f"Linking with '{lib_obj_mod}'")
-		elif isfile(obj_mod):
-			self.link_with.append(obj_mod)
-			print(f"Linking with '{obj_mod}'")
+		if (not isfile(obj_mod) and isfile(lib_obj_mod)): obj_mod = lib_obj_mod
+
+		if isfile(obj_mod): self.link_with.append(obj_mod)
 		elif module != "<libc>": # if module doesn't exist...
 			code = get_code(self.source, node["index"])
 
@@ -135,9 +172,16 @@ class Compiler:
 
 			self.symbols.declare(name, "CONST", 4, f"_{name}")
 
+		self.imports.append(module)
+
+		for linked_with in self.link_with:
+			if basename(linked_with).removesuffix(".o") in do_not_add_to_link_with:
+				self.link_with.remove(linked_with)
+
 	def export_names(self, node: list[str]):
 		for name in node:
 			self.topinstr(f"global _{name}")
+			self.exports.append(name)
 
 	#Traverses the AST and passes off each node to a specialized function
 	def traverse(self, top: dict=None):
@@ -177,30 +221,16 @@ class FunctionCompiler(Compiler):
 		self.params = params
 		self.post_prolog = ""
 
-		for param in params[::-1]: # reserve space for each arg
-			addr = f"ebp-{self.allocated_bytes}"
+		arg_offset = 8
+		for param in params: # reserve space for each arg
+			addr = f"ebp+{arg_offset}"
 
 			self.symbols.declare(param, "LET", 4, addr)
 
-			self.allocated_bytes+=4
+			arg_offset+=4
 
 	def instr(self, instr: str):
 		self.text+=f"\n\t{instr}"
-
-	def generate_arg_code(self) -> str:
-		code = ""
-
-		TO_ADD = 8+self.allocated_bytes
-
-		for i, param in enumerate(self.params, 0):
-			addr: str = self.symbols.get(param, 0)["address"]
-
-			stack_addr = f"esp+{(i*4)+TO_ADD}"
-
-			code+=f"\n\tmov eax, [{stack_addr}]\n\tmov [{addr}], eax"
-			
-		
-		return code
 
 	def generate_expression(self, expr: dict):
 		key: str; node: dict
@@ -390,7 +420,7 @@ class FunctionCompiler(Compiler):
 
 	def generate_epilog(self):
 		# is f"add esp, {self.allocated_bytes}\n\t" needed?
-		return f"add esp, {self.allocated_bytes}\n\tpop ebp\n\tret"
+		return f"mov esp, ebp\n\tpop ebp\n\tret"
 
 	def return_val(self, expr: dict):
 		if expr is None: self.instr("xor eax, eax")
@@ -462,4 +492,4 @@ class FunctionCompiler(Compiler):
 			else:
 				throw(f"UTSC 305: Unimplemented or Invalid AST Node '{key}'")
 
-		return f"\t{self.generate_prolog()}{self.generate_arg_code()}\n\t{self.text}\n\t{self.generate_epilog()}"
+		return f"\t{self.generate_prolog()}\n\t{self.text}\n\t{self.generate_epilog()}"

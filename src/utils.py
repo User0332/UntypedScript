@@ -107,6 +107,7 @@ def import_config(fname: str) -> dict:
 	try: # validate keys
 		assert isfile(conf["nasmPath"])
 		assert isfile(conf["gccPath"])
+		assert isfile(conf["ldPath"])
 	except (AssertionError, KeyError):
 		throw(
 			f"Fatal Error UTSC 006: Either some config keys were missing, "

@@ -39,7 +39,8 @@ from os import (
 from os.path import (
 	isfile, 
 	dirname,
-	basename
+	basename,
+	normpath
 )
 
 from sys import (
@@ -115,7 +116,7 @@ def main():
 	if args.out == None:
 		out = basesource+".o"
 		if not (executable or runfile): warn("UTSC 004: -o option unspecified, assuming object file", f">{out}\n")
-	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll")) and args.out != 'NULL':
+	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll", ".exports")) and args.out != 'NULL':
 		warn(f"UTSC 004: '{args.out}' is an invalid output file. Switching to object file by default.")
 		out = basesource+".o"
 	else:
@@ -189,6 +190,9 @@ def main():
 	compiler = Compiler(raw_ast, code, COMPILER_EXE_PATH, INPUT_FILE_PATH)
 	asm = compiler.traverse()
 
+	for dependency in compiler.link_with:
+		print(f"Link dependency (for '{basename(file)}') - {dependency!r}")
+
 	if compile_optimizations >= 2:
 		optimizer = AssemblyOptimizer(asm)
 		asm = optimizer.optimize()
@@ -196,6 +200,13 @@ def main():
 	throwerrors()
 	if warnings: printwarnings()
 	checkfailure()
+
+	if out.endswith(".exports"):
+		with open(out, 'w') as f:
+			f.write('\n'.join(compiler.exports))
+
+		with open(out+".modules", 'w') as f:
+			f.write('\n'.join(compiler.imports))
 
 	if show in ("dis", "disassemble", "disassembly", "asm", "assembly", "all"):
 		print("Disassembly:\n")
@@ -209,15 +220,29 @@ def main():
 
 	if out.endswith((".o", ".dll")):
 		objname = ''.join(out.split('.')[:-1])+".o"
+		tempname = f"{objname}.temp"
 
-		try: subprocess_call(
-			[
-				config["nasmPath"], 
-				asmname, 
-				"-f", fmt, 
-				"-o", objname
-			]
-		)
+		try:
+			subprocess_call(
+				[
+					config["nasmPath"], 
+					asmname, 
+					"-f", fmt, 
+					"-o", tempname
+				]
+			)
+
+			subprocess_call(
+				[
+					config["ldPath"],
+					tempname,
+					*compiler.link_with,
+					'-relocatable',
+					'-o', objname
+				]
+			)
+
+			os_remove(tempname)
 		except OSError as e:
 			throw(f"UTSC 003: An error occurred while trying to compile '{out}' - python: {e}")
 
@@ -230,8 +255,7 @@ def main():
 				config["gccPath"],
 				objname,
 				"-shared",
-				"-o", out,
-				*compiler.link_with
+				"-o", out
 			]
 		)
 		except OSError as e:
@@ -247,7 +271,6 @@ def main():
 			[
 				config["gccPath"],
 				out,
-				*compiler.link_with,
 				"-o", exepath
 			]
 		)

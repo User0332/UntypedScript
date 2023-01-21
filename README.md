@@ -25,13 +25,17 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
 - Solve recursion errors in parser
 - Remove weird parser bugs that result in a lot of errors
 - Array Literals
-- Stackalloc (dynamic because normally this would be achieved by creating a buffer)
 - Elif Blocks
 - For loops
 - Hoist global-level funcs
 - Being able to 'call' expressions - i.e. call an anonymous function - `(() => puts("hi"))()`
 	- Recycle memory used by no-longer-referenced anonymous functions
 - Namespaces
+- Allow for both stdcall and cdecl functions
+- DLL integration
+	- Imports
+	- Exports
+	- Fix DLL Compilation
 - Maybe objects?
 	- Object creation syntax
 	- Object utils/dynamic objects
