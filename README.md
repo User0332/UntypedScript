@@ -28,6 +28,7 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
 - Add asm optimizations
 - Elif Blocks (not else-ifs)
 - For loops
+- 64-bit programs and types
 - Hoist global-level funcs
 - Being able to 'call' expressions - i.e. call an anonymous function - `(() => puts("hi"))()`
 	- Recycle memory used by no-longer-referenced anonymous functions

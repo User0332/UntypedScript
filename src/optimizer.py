@@ -16,6 +16,16 @@ class AssemblyOptimizer:
 	def __init__(self, asm: str):
 		self.asm = asm
 		self.optimized = ""
+		self.VALID_REGISTERS = (
+			"rax", "eax",  "ax", "ah", "al",
+			"rbx", "ebx",  "bx", "bh", "bl",
+			"rcx", "ecx",  "cx", "ch", "cl",
+			"rdx", "edx",  "dx", "dh", "dl",
+			"rbp", "ebp",  "bp", "bpl",
+			"rsp", "esp",  "sp", "spl",			
+			"rsi", "esi",  "si", "sil",			
+			"rdi", "edi",  "di", "dil"
+		)
 
 
 	def optimize(self):
@@ -26,25 +36,37 @@ class AssemblyOptimizer:
 			line = line.strip()
 			
 			match = re_finditer("mov (.*), 0", line)
-			if match:
+			try:
 				reg = next(match).group(1)
 
-				line = f"xor {reg}, {reg}"
+				if reg in self.VALID_REGISTERS:
+					self.optimized+=f"xor {reg}, {reg}\n"
+					continue
+			except StopIteration: pass
 				
 
 			if line.startswith("mov eax, "):
 				mov_into_eax = True
 				mov_into_eax_val = line.removeprefix("mov eax, ")
+				continue
 			if mov_into_eax:
 				movinstr = re_finditer("mov (\[.*\]), eax", line)
-				if movinstr:
+				try:
 					movinstr = next(movinstr)
-					self.optimized+=f"mov {movinstr.group(1)}, {mov_into_eax_val}"
-				else:
+					# here we use DWORD, but in the future, when the 64-bit compiler option is introduced, this needs to be dependent 
+					# on that option rather than just DWORD (e.g. it could be QWORD with 64-bit types)
+					self.optimized+=f"mov DWORD {movinstr.group(1)}, {mov_into_eax_val}\n"
 					mov_into_eax = False
-					self.optimized+=line+"\n"
-			else:
-				self.optimized+=line+"\n"
+				except StopIteration:
+					if line == "push eax":
+						self.optimized+=f"push DWORD {mov_into_eax_val}\n"
+						mov_into_eax = False
+						continue
+					mov_into_eax = False
+					self.optimized+=f"mov eax, {mov_into_eax_val}\n{line}\n"
 
+				continue
+
+			self.optimized+=line+"\n"
 
 		return self.optimized

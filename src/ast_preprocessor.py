@@ -1,4 +1,5 @@
 from utils import SigNonConstantNumericalExpressionException
+from typing import Union
 
 valid_nodes = (
 	"Variable", 
@@ -38,14 +39,14 @@ class SyntaxTreePreproccesor:
 		return f"({expr})"
 
 	def var_accessed(self, name: str, top: dict=None) -> bool:
-		key: str; node: dict
+		key: str; node: Union[dict, list, int]
 		top = top if top is not None else self.ast
 
 		for key, node in top.items():
 			if key.startswith("Variable Reference"):
 				if node['name'] == name:
 					return True
-			elif type(node) is list:
+			elif key.startswith("Binary Operation"):
 				if self.var_accessed(name, node[0]) or self.var_accessed(name, node[1]):
 					return True
 			elif type(node) is int:

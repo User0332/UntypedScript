@@ -317,9 +317,6 @@ class FunctionCompiler(Compiler):
 					self.generate_expression(node)
 					self.instr("mov eax, [eax]")
 			elif key.startswith("Numerical Constant"):
-				if node == 0:
-					self.instr(f"xor eax, eax")
-					continue
 				self.instr(f"mov eax, {node}")
 			elif key.startswith("Variable Reference"):
 				self.reference_var(node["name"], node["index"])
