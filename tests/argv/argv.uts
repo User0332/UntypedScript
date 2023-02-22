@@ -1,21 +1,33 @@
 import { printf } from "<libc>"
-import { NORMAL_ARRAY_BYTE_OFFSET } from "uts-info"
 import {
+	foreach_slow,
  	value_at 
 } from "temp-utils"
 
-const main = (argc, argv) => {
+const using_foreach = (argc, argv) => {
+	foreach_slow(argv, argc, (arg, i) => {
+		printf("argv[%i] = %s\n", i, arg)
+	})
+}
+
+const using_while = (argc, argv) => {
 	let i = 0
 	let arg
-
-	printf("argc = %i\n", argc)
-
+	
 	while (i < argc)
 	{
 		arg = value_at(argv, i) // basically arg = argv[i], hopefully implemented in future
 		printf("argv[%i] = %s\n", i, arg)
 		i+=1
 	}
+}
+
+const main = (argc, argv) => {
+	printf("argc = %i\n", argc)
+
+	using_while(argc, argv)
+
+	using_foreach(argc, argv)
 
 	return 0
 }

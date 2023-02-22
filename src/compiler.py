@@ -385,7 +385,7 @@ class FunctionCompiler(Compiler):
 		name: str = node["name"]
 		_type: str = node["type"]
 
-		self.symbols.declare(name, _type, 4, f"ebp-{self.allocated_bytes}")
+		self.symbols.declare(name, _type, 4, f"ebp-{self.allocated_bytes+4}")
 
 		self.allocated_bytes+=4
 
@@ -396,7 +396,7 @@ class FunctionCompiler(Compiler):
 		index: int = node["index"]
 
 		#add instrs
-		self.symbols.declare(name, _type, 4, f"ebp-{self.allocated_bytes}")
+		self.symbols.declare(name, _type, 4, f"ebp-{self.allocated_bytes+4}")
 		memaddr = self.symbols.assign(name, value, index)
 		self.generate_expression(value)
 		self.instr(f"mov [{memaddr}], eax")
@@ -420,7 +420,10 @@ class FunctionCompiler(Compiler):
 
 	def generate_epilog(self):
 		# is f"add esp, {self.allocated_bytes}\n\t" needed?
-		return f"mov esp, ebp\n\tpop ebp\n\tret"
+		if self.allocated_bytes:
+			return f"mov esp, ebp\n\tpop ebp\n\tret"
+
+		return "pop ebp\n\tret"
 
 	def return_val(self, expr: dict):
 		if expr is None: self.instr("xor eax, eax")
