@@ -34,21 +34,7 @@ class AssemblyOptimizer:
 
 		for i, line in enumerate(self.asm.splitlines()):
 			line = line.strip()
-			
-			match = re_finditer("mov (.*), 0", line)
-			try:
-				reg = next(match).group(1)
-
-				if reg in self.VALID_REGISTERS:
-					self.optimized+=f"xor {reg}, {reg}\n"
-					continue
-			except StopIteration: pass
 				
-
-			if line.startswith("mov eax, "):
-				mov_into_eax = True
-				mov_into_eax_val = line.removeprefix("mov eax, ")
-				continue
 			if mov_into_eax:
 				movinstr = re_finditer("mov (\[.*\]), eax", line)
 				try:
@@ -66,6 +52,20 @@ class AssemblyOptimizer:
 					self.optimized+=f"mov eax, {mov_into_eax_val}\n{line}\n"
 
 				continue
+
+			if line.startswith("mov eax, "):
+				mov_into_eax = True
+				mov_into_eax_val = line.removeprefix("mov eax, ")
+				continue
+
+			match = re_finditer("mov (.*), 0", line)
+			try:
+				reg = next(match).group(1)
+
+				if reg in self.VALID_REGISTERS:
+					self.optimized+=f"xor {reg}, {reg}\n"
+					continue
+			except StopIteration: pass
 
 			self.optimized+=line+"\n"
 

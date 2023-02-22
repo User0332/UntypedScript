@@ -187,7 +187,7 @@ def main():
 	if warnings: printwarnings()
 	checkfailure()
 
-	compiler = Compiler(raw_ast, code, COMPILER_EXE_PATH, INPUT_FILE_PATH)
+	compiler = Compiler(raw_ast, code, COMPILER_EXE_PATH, INPUT_FILE_PATH, compile_optimizations)
 	asm = compiler.traverse()
 
 	for dependency in compiler.link_with:

@@ -14,7 +14,7 @@ from sys import platform as sys_platform
 from subprocess import call as subproc_call
 
 class Compiler:
-	def __init__(self, ast: dict, code: str, compiler_path: str, file_path: str):
+	def __init__(self, ast: dict, code: str, compiler_path: str, file_path: str, optimize: int):
 		self.ast = ast
 		self.top = ""
 		self.text = "section .text"
@@ -24,6 +24,7 @@ class Compiler:
 		self.evaluator = SyntaxTreePreproccesor(ast)
 		self.source = code
 		self.hidden_counter = 0
+		self.optimize = optimize
 		self.compiler_path = compiler_path+'/..' if compiler_path.endswith("src") else compiler_path # this will point to the src folder, we want it to point to root proj directory
 		self.file_path = file_path
 		self.link_with: list[str] = []
@@ -121,7 +122,7 @@ class Compiler:
 			sym_exp_mod = f"{dirname(uts_mod)}/{sym_exp_mod}"
 
 			try:
-				subproc_call([*shell, "utsc", "-o", sym_exp_mod, uts_mod])
+				subproc_call([*shell, "utsc", "-o", sym_exp_mod, uts_mod, f"-O{self.optimize}"])
 				
 				try:
 					with open(sym_exp_mod, 'r') as f:
@@ -149,7 +150,7 @@ class Compiler:
 				os_remove(sym_exp_mod+".modules")
 			except FileNotFoundError: pass
 
-			subproc_call([*shell, "utsc", "-o", obj_mod, uts_mod])
+			subproc_call([*shell, "utsc", "-o", obj_mod, uts_mod, f"-O{self.optimize}"])
 		elif module != "<libc>": warn(f"UTSC 310: Could not check for symbol clashes while importing '{module}'")
 
 		# make compiler config with NASM and GCC paths/ configured shell to use later
