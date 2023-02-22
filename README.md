@@ -25,6 +25,7 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
 - Solve recursion errors in parser
 - Remove weird parser bugs that result in a lot of errors
 - Array Literals
+- Add asm optimizations
 - Elif Blocks (not else-ifs)
 - For loops
 - Hoist global-level funcs
@@ -37,6 +38,7 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
 	- Exports
 	- Fix DLL Compilation
 - Maybe objects?
+	- Both Structs (implemented like in C) and Dynamic Objects (which are much slower but can be created arbitrarily at runtime)
 	- Object creation syntax
 	- Object utils/dynamic objects
 	- Object integration with C structs
