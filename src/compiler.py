@@ -344,8 +344,27 @@ class FunctionCompiler(Compiler):
 				self.outer.hidden_counter+=1
 			elif key.startswith("Function Call"):
 				self.call_func(node)
+			elif key.startswith("Array Literal"):
+				self.make_arr_literal(node)
 			else:
 				throw(f"UTSC 308: Invalid target for expression '{key}'")
+
+	def make_arr_literal(self, vals: list[dict]):
+		# again, we use the constant 4 for 32-bit, but 64-bit needs 8
+		self.allocated_bytes+=(len(vals)*4) # total space needed
+		end = self.allocated_bytes+4
+
+		start = f"ebp-{end}"
+		addr = start
+
+		for val in vals:
+			self.generate_expression(val)
+			self.instr(f"mov [{addr}], eax")
+
+			end-=4
+			addr = f"ebp-{end}"
+
+		self.instr(f"lea eax, [{start}]")
 
 	def reference_var(self, name: str, index: int, lea: bool=False):
 		try: memaddr = self.symbols.get(name, index)["address"]

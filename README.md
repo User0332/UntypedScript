@@ -24,7 +24,10 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
 - Error throwing that actually shows the correct line
 - Solve recursion errors in parser
 - Remove weird parser bugs that result in a lot of errors
+- Floats
 - Array Literals
+	- `arr[i]` syntax
+	- Multidimensional array literals and `arr[i][j]` syntax
 - Add asm optimizations
 - Elif Blocks (not else-ifs)
 - For loops
@@ -40,7 +43,7 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
 	- Fix DLL Compilation
 - Maybe objects?
 	- Both Structs (implemented like in C) and Dynamic Objects (which are much slower but can be created arbitrarily at runtime)
-		- Export structs via `struct_expr()` and `export struct <name>` statement
+		- Export structs via parser's `struct_expr()` function and `export struct <name>` statement
 	- Object creation syntax
 	- Object utils/dynamic objects
 	- Object integration with C structs

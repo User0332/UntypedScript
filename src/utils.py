@@ -129,9 +129,9 @@ class Token:
 	def __init__(self, token=None):
 		token = token if token else [None, None, None]
 
-		self.type = token[0]
-		self.value = token[1]
-		self.idx = token[2]
+		self.type: str = token[0]
+		self.value: str = token[1]
+		self.idx: int = token[2]
 
 	def __repr__(self):
 		return str(self.type)+" -> "+str(self.value)

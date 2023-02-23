@@ -34,21 +34,21 @@ class StringLiteral(Node):
 		return f'{{ "String Literal": {dumps(self.value)}  }}'
 
 class BinOpNode(Node):
-	def __init__(self, left: Node, op: Token, right: Node):
+	def __init__(self, left: Node, op: str, right: Node):
 		self.left = left
-		self.op = op
+		self.value = op
 		self.right = right
 
 	def __repr__(self):
-		return f'{{ "Binary Operation {self.op.value}" : [{self.left}, {self.right}] }}'
+		return f'{{ "Binary Operation {self.value}" : [{self.left}, {self.right}] }}'
 
 class UnaryOpNode(Node):
-	def __init__(self, op: Token, node: Node):
+	def __init__(self, op: str, node: Node):
 		self.op = op
 		self.node = node
 
 	def __repr__(self):
-		return f'{{"Unary Operation {self.op.value}" : {self.node} }}'
+		return f'{{"Unary Operation {self.op}" : {self.node} }}'
 
 class RefOpNode(Node):
 	def __init__(self, ident: str, idx: int):
@@ -100,6 +100,26 @@ class VariableAccessNode(Node):
 
 	def __repr__(self):
 		return f'{{"Variable Reference": {{ "name" : "{self.name}", "index" : {self.idx} }} }}'
+
+class VariableSubscriptNode(Node):
+	def __init__(self, var_tok: Token, offset: Node):
+		self.var_tok = var_tok
+		self.offset = offset
+
+	def __repr__(self):
+		return str( # Lowered AST, code lowered - var[offset] -> deref ( var+(offset*4) )
+			DerefOpNode(
+				BinOpNode(
+					VariableAccessNode(self.var_tok),
+					'+',
+					BinOpNode(
+						self.offset,
+						'*',
+						NumNode(4) # Uses constant 4, which may need to be changed for 64-bit types
+					)
+				)
+			)
+		)
 
 class ConditionalStatementNode(Node):
 	def __init__(self, condition: Node, if_body: dict, else_body: dict):
@@ -164,6 +184,21 @@ class ExportNode(Node):
 
 	def __repr__(self) -> str:
 		return f'{{ "Export": {self.names} }}'
+
+class StructCreationNode(Node):
+	def __init__(self, name: str, member_values: list[Node]):
+		self.name = name
+		self.member_values = member_values
+
+	def __repr__(self) -> str:
+		return f'{{ "Struct Creation": {{ "name": "{self.name}", "values": {self.member_values} }} }}'
+
+class ArrayLiteralNode(Node):
+	def __init__(self, vals: list[Node]):
+		self.vals = vals
+
+	def __repr__(self) -> str:
+		return f'{{ "Array Literal": {self.vals} }}'
 #
 
 #Parser
@@ -277,7 +312,7 @@ class Parser:
 				self.advance()
 				return UnimplementedNode()
 
-			return UnaryOpNode(current, fac)
+			return UnaryOpNode(current.value, fac)
 
 		return self.power()
 
@@ -285,15 +320,13 @@ class Parser:
 	def bin_op(self, func_a, ops, func_b=None):
 		if func_b is None:
 			func_b = func_a
-
-
 		
 		left = func_a()
 
 		while self.current.value in ops:
 			if self.in_paren: self.skip_newlines()
 
-			op = self.current
+			op = self.current.value
 			self.advance()
 
 			if self.in_paren: self.skip_newlines()
@@ -372,6 +405,36 @@ class Parser:
 
 		return names
 
+	def get_args(self, end=')'):
+		arguments = []
+
+		while self.current.value != end:
+			expr = self.expr()
+
+			if expr is None:
+				self.decrement()
+
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected expression, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+
+				self.advance()
+				return UnimplementedNode()
+
+			arguments.append(expr)
+
+			if self.current.value == ',':
+				self.advance()
+				continue
+
+			if self.current.value != end:
+				code = get_code(self.code, self.current.idx)
+				throw(f"UTSC 203: Expected '{end}' or ',', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+				self.advance()
+				return UnimplementedNode()
+
+		return arguments
+
 	#Grammar Term
 	def term(self):
 		return self.bin_op(self.factor, ('*', '/', '%'))
@@ -400,7 +463,7 @@ class Parser:
 				else:
 					return VariableAssignmentNode(current.value, expr, self.current.idx)
 			if self.current.value in ('+', '-', '/', '*'): # += -= *= /= assignment
-				op = self.current
+				op = self.current.value
 				self.advance()
 				
 				if self.current.value == '=':
@@ -416,7 +479,7 @@ class Parser:
 						self.advance()
 						return UnimplementedNode()
 					else:
-						return VariableAssignmentNode(
+						return VariableAssignmentNode( # Lowered AST for +=, -=, etc.
 							current.value,
 							BinOpNode(
 								VariableAccessNode(current),
@@ -429,38 +492,20 @@ class Parser:
 				self.decrement() # back up to operator token
 
 			if self.current.value != '(':
-				return VariableAccessNode(current)
+				if self.current.value != '[':
+					return VariableAccessNode(current)
+				
+				self.advance()
+				offset = self.expr()
+				self.advance()
 
-			arguments = []
-
-			self.advance()
-
-			while self.current.value != ')':
-				expr = self.expr()
-
-				if expr is None:
-					self.decrement()
-
-					code = get_code(self.code, self.current.idx)
-
-					throw(f"UTSC 203: Expected expression, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
-
-					self.advance()
-					return UnimplementedNode()
-
-				arguments.append(expr)
-
-				if self.current.value == ',':
-					self.advance()
-					continue
-
-				if self.current.value != ')':
-					code = get_code(self.code, self.current.idx)
-					throw(f"UTSC 203: Expected ')' or ',', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
-					self.advance()
-					return UnimplementedNode()
+				return VariableSubscriptNode(current, offset)
 
 			self.advance()
+
+			arguments = self.get_args()
+
+			self.advance() # pass closing paren
 
 			return FunctionCallNode(
 				current.value,
@@ -468,14 +513,53 @@ class Parser:
 				current.idx
 			)
 
-		elif current.type in ("INTEGER", "FLOAT"):
+		if current.type in ("INTEGER", "FLOAT"):
 			self.advance()
 			return NumNode(current.value)
-		elif current.type == "STRING":
+		if current.type == "STRING":
 			self.advance()
 			return StringLiteral(current.value)
+		if current.type == "NEW":
+			self.advance()
 
-		elif current.value == '(':
+			if self.current.type != "IDENTIFIER":
+				self.decrement()
+
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected identifier after 'struct' keyword, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+		
+			name = self.current.value
+
+			self.advance()
+
+			self.skip_newlines()
+
+			if self.current.value != '{':
+				self.decrement()
+
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected opening brace after struct name, got '{Token(self.tokens[self.idx+1]).value}'", code)
+
+			self.advance()
+
+			member_vals = self.get_args('}')
+
+			self.advance() # pas last curly brace
+
+			return StructCreationNode(name, member_vals)
+
+		if current.value == '[':
+			self.advance(),
+
+			vals = self.get_args(']')
+
+			self.advance() # pass last square bracket
+
+			return ArrayLiteralNode(vals)
+
+		if current.value == '(':
 			self.advance()
 
 			if (self.current.type == "IDENTIFIER") or (self.current.value == ')'):
@@ -530,19 +614,19 @@ class Parser:
 			else:
 				return self.fallback_paren_expr(self.current.idx)
 
-		elif current.value == "if":
+		if current.value == "if":
 			self.advance()
 			return self.conditional_expr()
-		elif current.value == "while":
+		if current.value == "while":
 			self.advance()
 			return self.while_expr()
 
-		elif self.in_func and self.current.type == "RETURN":
+		if self.in_func and self.current.type == "RETURN":
 			self.advance()
 			expr = self.expr()
 
 			return FunctionReturnStatement(expr)
-		elif current.type == "EXPORT" and not self.in_func:
+		if current.type == "EXPORT" and not self.in_func:
 			self.advance()
 
 			if self.current.value != '{':
@@ -557,7 +641,7 @@ class Parser:
 			
 			return ExportNode(names)
 
-		elif current.type == "IMPORT" and not self.in_func:
+		if current.type == "IMPORT" and not self.in_func:
 			self.advance()
 
 			names: list[str] = []
