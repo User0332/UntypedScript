@@ -1,0 +1,16 @@
+const foreach = (arr, len, callback) => {
+	let i = 0
+	
+	while (i < len)
+	{
+		callback(arr[i], i)
+
+		i+=1
+	}
+
+	return 0
+}
+
+export {
+	foreach
+}

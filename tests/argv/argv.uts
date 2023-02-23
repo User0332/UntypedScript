@@ -1,33 +1,15 @@
 import { printf } from "<libc>"
-import {
-	foreach_slow,
- 	value_at 
-} from "temp-utils"
-
-const using_foreach = (argc, argv) => {
-	foreach_slow(argv, argc, (arg, i) => {
-		printf("argv[%i] = %s\n", i, arg)
-	})
-}
-
-const using_while = (argc, argv) => {
-	let i = 0
-	let arg
-	
-	while (i < argc)
-	{
-		arg = value_at(argv, i) // basically arg = argv[i], hopefully implemented in future
-		printf("argv[%i] = %s\n", i, arg)
-		i+=1
-	}
-}
+import { foreach } from "utils/uts-array"
 
 const main = (argc, argv) => {
 	printf("argc = %i\n", argc)
 
-	using_while(argc, argv)
-
-	using_foreach(argc, argv)
+	foreach(
+		argv, argc, 
+		(item, index) => {
+			printf("argv[%i] = %s\n", index, item)
+		}
+	)
 
 	return 0
 }

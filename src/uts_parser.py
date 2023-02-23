@@ -409,7 +409,9 @@ class Parser:
 		arguments = []
 
 		while self.current.value != end:
+			self.skip_newlines()
 			expr = self.expr()
+			self.skip_newlines()
 
 			if expr is None:
 				self.decrement()

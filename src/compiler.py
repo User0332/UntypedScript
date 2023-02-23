@@ -108,10 +108,14 @@ class Compiler:
 		sym_exp_mod = f"{module}.exports"
 		asm_mod = f"{self.file_path}/{module}.asm"
 		lib_uts_mod = f"{self.compiler_path}/lib/{module}.uts"
+		lib_sym_exp_mod = f"{self.compiler_path}/lib/{module}.exports"
 		lib_obj_mod = normpath(f"{self.compiler_path}/lib/{module}.o")
 		obj_mod = normpath(f"{self.file_path}/{module}.o")
 
-		if (not isfile(uts_mod) and isfile(lib_uts_mod)): uts_mod = lib_uts_mod
+		if (not isfile(uts_mod) and isfile(lib_uts_mod)):
+			uts_mod = lib_uts_mod
+			sym_exp_mod = lib_sym_exp_mod
+			obj_mod = lib_obj_mod
 
 		if sys_platform == "win32":
 			shell = ["powershell"]
@@ -119,8 +123,6 @@ class Compiler:
 			shell = ["bash", "-c"]
 
 		if (isfile(uts_mod)): # if a .uts file, compile it
-			sym_exp_mod = f"{dirname(uts_mod)}/{sym_exp_mod}"
-
 			try:
 				subproc_call([*shell, "utsc", "-o", sym_exp_mod, uts_mod, f"-O{self.optimize}"])
 				
@@ -158,9 +160,6 @@ class Compiler:
 			try: subproc_call([*shell, "nasm", "-f", self.platform, "-o", obj_mod, asm_mod])
 			except OSError:
 				throw(f"UTSC 301: Module '{module}' could not be compiled - nasm is not in PATH.")
-
-		# now make sure the object file is actually here
-		if (not isfile(obj_mod) and isfile(lib_obj_mod)): obj_mod = lib_obj_mod
 
 		if isfile(obj_mod): self.link_with.append(obj_mod)
 		elif module != "<libc>": # if module doesn't exist...
