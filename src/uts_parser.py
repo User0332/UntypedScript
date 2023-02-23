@@ -168,12 +168,15 @@ class ExportNode(Node):
 
 #Parser
 class Parser:
-	def __init__(self, tokens, code):
+	def __init__(self, tokens: list, code):
 		self.tokens = tokens
 		self.code = code
 		self.in_paren = []
 		self.in_func = []
 		self.idx = -1
+		self.structs: dict[str, list[str]] = {
+			# name: members[]
+		}
 		self.advance()
 
 	#Gets all the expressions in the code 
@@ -269,7 +272,7 @@ class Parser:
 				
 				code = get_code(self.code, self.current.idx)
 				
-				throw(f"UTSC 203: Expecting value or expression, got {fmt_type(self.current.type)}", code)
+				throw(f"UTSC 203: Expecting value or expression, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 				
 				self.advance()
 				return UnimplementedNode()
@@ -327,7 +330,7 @@ class Parser:
 
 			code = get_code(self.code, self.current.idx)
 			
-			throw(f"UTSC 203: Expected ')', got {fmt_type(self.current.type)}", code)
+			throw(f"UTSC 203: Expected ')', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 			
 			self.advance()
 			return UnimplementedNode()
@@ -341,7 +344,7 @@ class Parser:
 			if self.current.type != "IDENTIFIER":
 				code = get_code(self.code, self.current.idx)
 
-				throw(f"UTSC 203: Expected identifier, got {fmt_type(self.current.type)}", code)
+				throw(f"UTSC 203: Expected identifier, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 
 				self.advance()
 				return UnimplementedNode()
@@ -360,7 +363,7 @@ class Parser:
 				break
 
 			code = get_code(self.code, self.current.idx)
-			throw(f"UTSC 203: Expected '}}' or ',', got {fmt_type(self.current.type)}", code)
+			throw(f"UTSC 203: Expected '}}' or ',', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 			
 			self.advance()
 			return UnimplementedNode()
@@ -390,7 +393,7 @@ class Parser:
 
 					code = get_code(self.code, self.current.idx)
 					
-					throw(f"UTSC 203: Expected expression after assignment operator '=', got {fmt_type(self.current.type)}", code)
+					throw(f"UTSC 203: Expected expression after assignment operator '=', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 					
 					self.advance()
 					return UnimplementedNode()
@@ -408,7 +411,7 @@ class Parser:
 
 						code = get_code(self.code, self.current.idx)
 						
-						throw(f"UTSC 203: Expected expression after assignment operator '{op.value}=', got {fmt_type(self.current.type)}", code)
+						throw(f"UTSC 203: Expected expression after assignment operator '{op.value}=', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 						
 						self.advance()
 						return UnimplementedNode()
@@ -440,7 +443,7 @@ class Parser:
 
 					code = get_code(self.code, self.current.idx)
 
-					throw(f"UTSC 203: Expected expression, got {fmt_type(self.current.type)}", code)
+					throw(f"UTSC 203: Expected expression, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 
 					self.advance()
 					return UnimplementedNode()
@@ -453,7 +456,7 @@ class Parser:
 
 				if self.current.value != ')':
 					code = get_code(self.code, self.current.idx)
-					throw(f"UTSC 203: Expected ')' or ',', got {fmt_type(self.current.type)}", code)
+					throw(f"UTSC 203: Expected ')' or ',', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 					self.advance()
 					return UnimplementedNode()
 
@@ -513,7 +516,7 @@ class Parser:
 
 						code = get_code(self.code, self.current.idx)
 
-						throw(f"UTSC 203: Expected expression, got {fmt_type(self.current.type)}", code)
+						throw(f"UTSC 203: Expected expression, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 
 						self.advance()
 						return UnimplementedNode()
@@ -545,7 +548,7 @@ class Parser:
 			if self.current.value != '{':
 				code = get_code(self.code, self.current.idx)
 
-				throw(f"UTSC 203: Expected '}}', got {fmt_type(self.current.type)}", code)
+				throw(f"UTSC 203: Expected '}}', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 				return UnimplementedNode()
 
 			self.advance()
@@ -567,7 +570,7 @@ class Parser:
 				if self.current.type != "IDENTIFIER":
 					code = get_code(self.code, self.current.idx)
 
-					throw(f"UTSC 203: Expected identifier or '{{', got {fmt_type(self.current.type)}", code)
+					throw(f"UTSC 203: Expected identifier or '{{', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 
 					self.advance()
 					return UnimplementedNode()
@@ -612,7 +615,7 @@ class Parser:
 		if condition is None:
 			code = get_code(self.code, self.current.idx)
 
-			throw(f"UTSC 203: Expected expression, got {fmt_type(self.current.type)}", code)
+			throw(f"UTSC 203: Expected expression, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 
 			self.advance()
 			return UnimplementedNode()
@@ -628,7 +631,7 @@ class Parser:
 			if if_nodes is None:
 				code = get_code(self.code, self.current.idx)
 
-				throw(f"UTSC 203: Expected expression, got {fmt_type(self.current.type)}", code)
+				throw(f"UTSC 203: Expected expression, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 
 				self.advance()
 				return UnimplementedNode()
@@ -662,7 +665,7 @@ class Parser:
 				if else_nodes is None:
 					code = get_code(self.code, self.current.idx)
 
-					throw(f"UTSC 203: Expected expression, got {fmt_type(self.current.type)}", code)
+					throw(f"UTSC 203: Expected expression, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 		else:
 			self.go_back_newlines() # we don't want to consume the expression delimeter
 			else_body = {}
@@ -675,7 +678,7 @@ class Parser:
 		if condition is None:
 			code = get_code(self.code, self.current.idx)
 
-			throw(f"UTSC 203: Expected expression, got {fmt_type(self.current.type)}", code)
+			throw(f"UTSC 203: Expected expression, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 
 			self.advance()
 			return UnimplementedNode()
@@ -691,7 +694,7 @@ class Parser:
 			if body_nodes is None:
 				code = get_code(self.code, self.current.idx)
 
-				throw(f"UTSC 203: Expected expression, got {fmt_type(self.current.type)}", code)
+				throw(f"UTSC 203: Expected expression, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 
 				self.advance()
 				return UnimplementedNode()
@@ -716,7 +719,7 @@ class Parser:
 			if self.current.type != "IDENTIFIER":
 				code = get_code(self.code, self.current.idx)
 
-				throw(f"UTSC 203: Expected identifier after address operator 'ref', got {fmt_type(self.current.type)} instead", code)
+				throw(f"UTSC 203: Expected identifier after address operator 'ref', got {fmt_type(Token(self.tokens[self.idx+1]).type)} instead", code)
 
 			ident = self.current
 
@@ -731,10 +734,37 @@ class Parser:
 
 			return DerefOpNode(expr)
 
-
-
 		return self.bin_op(self.num_expr, ("==", "!=", '<', '>', "<=", ">=", "and", "or"))
 		
+	def struct_expr(self):
+		if self.current.type != "IDENTIFIER":
+			self.decrement()
+
+			code = get_code(self.code, self.current.idx)
+
+			throw(f"UTSC 203: Expected identifier after 'struct' keyword, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+
+		name = self.current.value
+
+		self.advance()
+
+		self.skip_newlines()
+
+		if self.current.value != '{':
+			self.decrement()
+
+			code = get_code(self.code, self.current.idx)
+
+			throw(f"UTSC 203: Expected opening brace after struct name, got '{Token(self.tokens[self.idx+1]).value}'", code)
+
+		self.advance()
+		
+		members = self.grab_import_export_names()
+
+		self.structs[name] = members
+
+		return None
+
 
 	def num_expr(self):
 		return self.bin_op(self.term, ("+", "-"))
@@ -748,7 +778,7 @@ class Parser:
 				
 				code = get_code(self.code, self.current.idx)
 				
-				throw(f"UTSC 203: Expected identifier after '{vartype.lower()}', got {fmt_type(self.current.type)}", code)
+				throw(f"UTSC 203: Expected identifier after '{vartype.lower()}', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 				
 				self.advance()
 				return UnimplementedNode()
@@ -778,7 +808,7 @@ class Parser:
 
 					code = get_code(self.code, self.current.idx)
 					
-					throw(f"UTSC 203: Expected expression after assignment operator '=', got {fmt_type(self.current.type)}", code)
+					throw(f"UTSC 203: Expected expression after assignment operator '=', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 					
 					self.advance()
 					return UnimplementedNode()
@@ -787,11 +817,15 @@ class Parser:
 			else:
 				code = get_code(self.code, self.current.idx)
 				
-				throw(f"UTSC 203: Expected '=' or <newline>, got {fmt_type(self.current.type)}", code)
+				throw(f"UTSC 203: Expected '=' or <newline>, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 				
 				self.advance()
 				return UnimplementedNode()
-		elif self.current.type == "NEWLINE":
+		if self.current.type == "STRUCT":
+			self.advance()
+			return self.struct_expr()
+
+		if self.current.type == "NEWLINE":
 			return None
 
 		return self.bin_op(self.comp_expr, ('and', 'or'))

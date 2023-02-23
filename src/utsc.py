@@ -116,7 +116,7 @@ def main():
 	if args.out == None:
 		out = basesource+".o"
 		if not (executable or runfile): warn("UTSC 004: -o option unspecified, assuming object file", f">{out}\n")
-	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll", ".exports")) and args.out != 'NULL':
+	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll", ".exports", ".structs")) and args.out != 'NULL':
 		warn(f"UTSC 004: '{args.out}' is an invalid output file. Switching to object file by default.")
 		out = basesource+".o"
 	else:
@@ -180,8 +180,12 @@ def main():
 		print(f"Pretty-print:\n\n\n{ast_name_str}\n{ast}\n\n\n")
 
 	if out.endswith(".json"):
-		with open(out, "w") as f:
+		with open(out, 'w') as f:
 			f.write(ast)
+
+	if out.endswith(".structs"):
+		with open(out, 'w') as f:
+			f.write(dumps(parser.structs, indent=2))
 
 	throwerrors()
 	if warnings: printwarnings()

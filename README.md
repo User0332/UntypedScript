@@ -40,6 +40,7 @@ Compile it with `utsc -e helloworld.uts` and run `helloworld.exe`, or just run `
 	- Fix DLL Compilation
 - Maybe objects?
 	- Both Structs (implemented like in C) and Dynamic Objects (which are much slower but can be created arbitrarily at runtime)
+		- Export structs via `struct_expr()` and `export struct <name>` statement
 	- Object creation syntax
 	- Object utils/dynamic objects
 	- Object integration with C structs

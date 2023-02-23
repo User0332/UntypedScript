@@ -35,7 +35,8 @@ class Lexer:
 			"else": "CONDITIONAL_KEYWD",
 			"asm": "INLINE_ASSEMBLY",
 			"ref": "ADDR_OP",
-			"deref": "ADDR_OP"
+			"deref": "ADDR_OP",
+			"struct": "STRUCT"
 		}
 		self.SPECIALS = "()[]{}.:,;"
 		self.OPERATORS = (
