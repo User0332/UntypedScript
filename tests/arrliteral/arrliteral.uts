@@ -1,0 +1,15 @@
+import { printf } from "<libc>"
+
+const main = (argc, argv) => {
+	const arr = ["cool", 1, 2, 3]
+
+	printf("arr[0] = \"%s\"\n", arr[0])
+
+	printf("arr[1] = %i\n", arr[1])
+
+	printf("arr = %p\n", arr)
+
+	printf("argv[0] = \"%s\"", argv[0])
+}
+
+export { main }
