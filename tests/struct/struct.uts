@@ -1,8 +1,16 @@
+import { printf } from "<libc>"
+
 struct Person
 {
-    name, age
+	name, age
 }
 
 const main = () => {
-    const joe = new Person {"Joe", 23}
+	const struct Person joe = ["Joe", 34]
+
+	printf("Person Name: %s\n", joe.name)
+	printf("Person Age: %i\n", joe.age)
+
 }
+
+export { main }

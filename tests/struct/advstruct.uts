@@ -1,0 +1,28 @@
+import { printf } from "<libc>"
+
+struct Person
+{
+	name, age
+}
+
+struct Car
+{
+	owner
+}
+
+const get_person = () => {
+	return ["Jeff", 23]
+}
+
+const main = () => {
+	const struct Person person = get_person()
+	printf("Person Name: %s\n", person.name)
+
+    // still bugged
+	const struct Car mycar = [person]
+	const struct Person car_owner = mycar.owner
+
+	printf("Car Owner Name: %s\n", car_owner.name)
+}
+
+export { main }

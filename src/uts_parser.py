@@ -17,7 +17,8 @@ from utils import (
 
 #Node Utility Classes
 class Node:
-	pass
+	def __repr__(self) -> str:
+		return f'{{ "Node": "I am a node!" }}'
 
 class NumNode(Node):
 	def __init__(self, value: str):
@@ -101,16 +102,16 @@ class VariableAccessNode(Node):
 	def __repr__(self):
 		return f'{{"Variable Reference": {{ "name" : "{self.name}", "index" : {self.idx} }} }}'
 
-class VariableSubscriptNode(Node):
-	def __init__(self, var_tok: Token, offset: Node):
-		self.var_tok = var_tok
+class ExprSubscriptNode(Node):
+	def __init__(self, expr: Node, offset: Node):
+		self.expr = expr
 		self.offset = offset
 
 	def __repr__(self):
-		return str( # Lowered AST, code lowered - var[offset] -> deref ( var+(offset*4) )
+		return str( # Lowered AST, code lowered - expr[offset] -> deref ( expr+(offset*4) )
 			DerefOpNode(
 				BinOpNode(
-					VariableAccessNode(self.var_tok),
+					self.expr,
 					'+',
 					BinOpNode(
 						self.offset,
@@ -151,16 +152,15 @@ class AnonymousFunctionNode(Node):
 		self.body = dumps(body)
 	
 	def __repr__(self):
-		return f'{{"Anonymous Function" : {{"parameters" : {self.params}, "body" : {self.body}  }} }}'
+		return f'{{"Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}  }} }}'
 
 class FunctionCallNode(Node):
-	def __init__(self, name: str, args: list[Node], idx: int):
-		self.name = name
+	def __init__(self, addr: Node, args: list[Node]):
+		self.addr = addr
 		self.args = args
-		self.idx = idx
 
 	def __repr__(self):
-		return f'{{"Function Call" : {{"name" : "{self.name}", "arguments" : {self.args}, "index" : {self.idx} }} }}'
+		return f'{{"Function Call" : {{ "addr" : {self.addr}, "arguments" : {self.args} }} }}'
 
 class FunctionReturnStatement(Node):
 	def __init__(self, expr: dict):
@@ -185,13 +185,13 @@ class ExportNode(Node):
 	def __repr__(self) -> str:
 		return f'{{ "Export": {self.names} }}'
 
-class StructCreationNode(Node):
-	def __init__(self, name: str, member_values: list[Node]):
+class StructCastNode(Node):
+	def __init__(self, name: str, expr: Node):
 		self.name = name
-		self.member_values = member_values
+		self.node = expr
 
 	def __repr__(self) -> str:
-		return f'{{ "Struct Creation": {{ "name": "{self.name}", "values": {self.member_values} }} }}'
+		return f'{{ "Struct Cast": {{ "name": "{self.name}", "expr": {self.node} }} }}'
 
 class ArrayLiteralNode(Node):
 	def __init__(self, vals: list[Node]):
@@ -199,6 +199,14 @@ class ArrayLiteralNode(Node):
 
 	def __repr__(self) -> str:
 		return f'{{ "Array Literal": {self.vals} }}'
+
+class PropertyAccessNode(Node):
+	def __init__(self, expr: Node, name: str):
+		self.expr = expr
+		self.name = name
+
+	def __repr__(self) -> str:
+		return f'{{ "Property Access": {{ "expr": {self.expr}, "name": "{self.name}" }} }}'
 #
 
 #Parser
@@ -222,16 +230,17 @@ class Parser:
 		ast = {}
 
 		while 1:
-			expr = str(self.expr())
+			expr = str(self.expr_wrapper())
 
 			if self.current.type not in ("NEWLINE", "EOF"):
 				code = get_code(self.code, self.current.idx)
 
 				throw(f"UTSC 201: Missing end-of-statement token <newline>", code)
 
-			self.advance() # acknowledge the newline
+				self.advance()
+				return UnimplementedNode()
 
-			expr = "{}" if expr == "None" else expr
+			self.advance() # acknowledge the newline
 
 			ast[f"Expression @Idx[{self.idx}]"] = loads(expr)
 
@@ -249,13 +258,77 @@ class Parser:
 		self.idx-=2
 		self.advance()
 
+	def expr_wrapper(self): # allows for tokens after expressions like expr[], expr(), and expr.<name>, which all still evaluate to expressions
+		expr = self.expr()
+
+		if expr is None: return "{}"
+
+		if self.current.value == '[':
+			self.advance()
+			# BUG: cannot stack like arr[i][j], can only do something like arr[arr[i]], which is not exactly what is wanted
+			# NOTE: the same problem goes for the function calling - expr()() is not possible at the moment
+			offset = self.expr_wrapper()
+
+			if self.current.value != ']':
+				self.decrement()
+
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected ')', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+
+				self.advance()
+				return UnimplementedNode()
+
+			self.advance() # pass closing square bracket
+
+			return ExprSubscriptNode(expr, offset)
+
+		if self.current.value == '(':
+			self.advance()
+
+			arguments = self.get_args()
+
+			self.advance() # pass closing paren, errors are handled by get_args()
+
+			return FunctionCallNode(
+				expr,
+				arguments
+			)
+
+		if self.current.value == '.':
+			start = self.current.idx
+			node = PropertyAccessNode(expr, "")
+
+			while self.current.value == '.': # property access
+				if self.current.idx != start: # if this is not the first go-round
+					node = PropertyAccessNode(node, "")
+
+				self.advance()
+
+				if self.current.type != "IDENTIFIER":
+					self.decrement()
+
+					code = get_code(self.code, self.current.idx)
+
+					throw(f"UTSC 203: Expected identifier after '.' operator, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+					
+					self.advance()
+					return UnimplementedNode()
+
+				node.name = self.current.value
+				
+				self.advance()
+
+			return node
+
+		return expr
+
+
 	#gets blocks of code in between curly braces
 	def get_body(self):
 		body = {}
 		while self.current.value != "}":				
-			expr = str(self.expr())
-
-			expr = "{}" if expr == "None" else expr
+			expr = str(self.expr_wrapper())
 
 			body[f"Expression @Idx[{self.idx}]"] = loads(expr)
 
@@ -344,7 +417,7 @@ class Parser:
 
 		self.skip_newlines()
 
-		expression = self.expr()
+		expression = self.expr_wrapper()
 		
 		self.skip_newlines()
 
@@ -410,7 +483,7 @@ class Parser:
 
 		while self.current.value != end:
 			self.skip_newlines()
-			expr = self.expr()
+			expr = self.expr_wrapper()
 			self.skip_newlines()
 
 			if expr is None:
@@ -452,7 +525,7 @@ class Parser:
 			
 			if self.current.value == '=':
 				self.advance()
-				expr = self.expr()
+				expr = self.expr_wrapper()
 				if expr is None:
 					self.decrement()
 
@@ -470,7 +543,7 @@ class Parser:
 				
 				if self.current.value == '=':
 					self.advance()
-					expr = self.expr()
+					expr = self.expr_wrapper()
 					if expr is None:
 						self.decrement()
 
@@ -493,27 +566,10 @@ class Parser:
 
 				self.decrement() # back up to operator token
 
-			if self.current.value != '(':
-				if self.current.value != '[':
-					return VariableAccessNode(current)
-				
-				self.advance()
-				offset = self.expr()
-				self.advance()
+			return VariableAccessNode(current)
+			
 
-				return VariableSubscriptNode(current, offset)
 
-			self.advance()
-
-			arguments = self.get_args()
-
-			self.advance() # pass closing paren
-
-			return FunctionCallNode(
-				current.value,
-				arguments,
-				current.idx
-			)
 
 		if current.type in ("INTEGER", "FLOAT"):
 			self.advance()
@@ -521,37 +577,6 @@ class Parser:
 		if current.type == "STRING":
 			self.advance()
 			return StringLiteral(current.value)
-		if current.type == "NEW":
-			self.advance()
-
-			if self.current.type != "IDENTIFIER":
-				self.decrement()
-
-				code = get_code(self.code, self.current.idx)
-
-				throw(f"UTSC 203: Expected identifier after 'struct' keyword, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
-		
-			name = self.current.value
-
-			self.advance()
-
-			self.skip_newlines()
-
-			if self.current.value != '{':
-				self.decrement()
-
-				code = get_code(self.code, self.current.idx)
-
-				throw(f"UTSC 203: Expected opening brace after struct name, got '{Token(self.tokens[self.idx+1]).value}'", code)
-
-			self.advance()
-
-			member_vals = self.get_args('}')
-
-			self.advance() # pas last curly brace
-
-			return StructCreationNode(name, member_vals)
-
 		if current.value == '[':
 			self.advance(),
 
@@ -595,7 +620,7 @@ class Parser:
 					func_body = self.get_body()
 					self.in_func.pop()
 				else:
-					expr = self.expr()
+					expr = self.expr_wrapper()
 
 					if expr is None:
 						self.decrement()
@@ -625,7 +650,7 @@ class Parser:
 
 		if self.in_func and self.current.type == "RETURN":
 			self.advance()
-			expr = self.expr()
+			expr = self.expr_wrapper()
 
 			return FunctionReturnStatement(expr)
 		if current.type == "EXPORT" and not self.in_func:
@@ -635,6 +660,8 @@ class Parser:
 				code = get_code(self.code, self.current.idx)
 
 				throw(f"UTSC 203: Expected '}}', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+				
+				self.advance()
 				return UnimplementedNode()
 
 			self.advance()
@@ -679,6 +706,8 @@ class Parser:
 				code = get_code(self.code, self.current.idx)
 
 				throw(f"UTSC 203: Expected module name, got {self.current.value!r}", code)
+				
+				self.advance()
 				return UnimplementedNode()
 
 			modnode = self.current
@@ -696,7 +725,7 @@ class Parser:
 
 	#Grammar Expressions
 	def conditional_expr(self):
-		condition = self.expr()
+		condition = self.expr_wrapper()
 
 		if condition is None:
 			code = get_code(self.code, self.current.idx)
@@ -712,7 +741,7 @@ class Parser:
 			self.advance()
 			if_body = self.get_body()
 		else:
-			if_nodes = self.expr()
+			if_nodes = self.expr_wrapper()
 			
 			if if_nodes is None:
 				code = get_code(self.code, self.current.idx)
@@ -746,7 +775,7 @@ class Parser:
 				self.advance()
 				else_body = self.get_body()
 			else:
-				else_nodes = self.expr()
+				else_nodes = self.expr_wrapper()
 				else_body = {f"Expression @Idx[{self.idx}]" : loads(str(else_nodes))}
 				if else_nodes is None:
 					code = get_code(self.code, self.current.idx)
@@ -759,7 +788,7 @@ class Parser:
 		return ConditionalStatementNode(condition, if_body, else_body)
 
 	def while_expr(self):
-		condition = self.expr()
+		condition = self.expr_wrapper()
 
 		if condition is None:
 			code = get_code(self.code, self.current.idx)
@@ -775,7 +804,7 @@ class Parser:
 			self.advance()
 			body = self.get_body()
 		else:
-			body_nodes = self.expr()
+			body_nodes = self.expr_wrapper()
 
 			if body_nodes is None:
 				code = get_code(self.code, self.current.idx)
@@ -816,7 +845,7 @@ class Parser:
 		elif self.current.value == "deref":
 			self.advance()
 
-			expr = self.expr()
+			expr = self.expr_wrapper()
 
 			return DerefOpNode(expr)
 
@@ -829,6 +858,7 @@ class Parser:
 			code = get_code(self.code, self.current.idx)
 
 			throw(f"UTSC 203: Expected identifier after 'struct' keyword, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+			return UnimplementedNode()
 
 		name = self.current.value
 
@@ -842,6 +872,7 @@ class Parser:
 			code = get_code(self.code, self.current.idx)
 
 			throw(f"UTSC 203: Expected opening brace after struct name, got '{Token(self.tokens[self.idx+1]).value}'", code)
+			return UnimplementedNode()
 
 		self.advance()
 		
@@ -859,6 +890,25 @@ class Parser:
 		if self.current.type in ("CONST", "LET"):
 			vartype: str = self.current.type
 			self.advance()
+			if self.current.type == "STRUCT":
+				self.advance()
+
+				if self.current.type != "IDENTIFIER":
+					self.decrement()
+					
+					code = get_code(self.code, self.current.idx)
+					
+					throw(f"UTSC 203: Expected identifier after '{vartype.lower()} struct', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+					
+					self.advance()
+					return UnimplementedNode()
+
+				struct_name = self.current.value
+
+				vartype+=f" {struct_name}"
+
+				self.advance()
+
 			if self.current.type != "IDENTIFIER":
 				self.decrement()
 				
@@ -887,7 +937,7 @@ class Parser:
 
 			elif self.current.value == '=':
 				self.advance()
-				expr = self.expr()
+				expr = self.expr_wrapper()
 
 				if expr is None:
 					self.decrement()

@@ -14,7 +14,7 @@ from sys import platform as sys_platform
 from subprocess import call as subproc_call
 
 class Compiler:
-	def __init__(self, ast: dict, code: str, compiler_path: str, file_path: str, optimize: int):
+	def __init__(self, ast: dict, code: str, compiler_path: str, file_path: str, optimize: int, structs: dict):
 		self.ast = ast
 		self.top = ""
 		self.text = "section .text"
@@ -23,6 +23,7 @@ class Compiler:
 		self.symbols = SymbolTable(code)
 		self.evaluator = SyntaxTreePreproccesor(ast)
 		self.source = code
+		self.structs: dict[str, list[str]] = structs
 		self.hidden_counter = 0
 		self.optimize = optimize
 		self.compiler_path = compiler_path+'/..' if compiler_path.endswith("src") else compiler_path # this will point to the src folder, we want it to point to root proj directory
@@ -232,7 +233,7 @@ class FunctionCompiler(Compiler):
 	def instr(self, instr: str):
 		self.text+=f"\n\t{instr}"
 
-	def generate_expression(self, expr: dict):
+	def generate_expression(self, expr: dict, getfuncaddr: bool=False):
 		key: str; node: dict
 
 		for key, node in expr.items():
@@ -319,7 +320,7 @@ class FunctionCompiler(Compiler):
 			elif key.startswith("Numerical Constant"):
 				self.instr(f"mov eax, {node}")
 			elif key.startswith("Variable Reference"):
-				self.reference_var(node["name"], node["index"])
+				self.reference_var(node["name"], node["index"], getfuncaddr=getfuncaddr)
 			elif key.startswith("Anonymous Function"):
 				params: list[str] = node["parameters"]
 				body: dict = node["body"]
@@ -345,8 +346,52 @@ class FunctionCompiler(Compiler):
 				self.call_func(node)
 			elif key.startswith("Array Literal"):
 				self.make_arr_literal(node)
+			elif key.startswith("Property Access"):
+				self.access_prop(node)
 			else:
 				throw(f"UTSC 308: Invalid target for expression '{key}'")
+
+	def access_prop(self, node: dict):
+		expr: dict = node["expr"]
+		name: str = node["name"]
+
+		if expr.get("Variable Reference") is not None:
+			var = expr["Variable Reference"]
+
+			dtype: str = self.symbols.get(var["name"], var["index"])["type"]
+
+			if dtype.startswith(("CONST ", "LET ")):
+				if dtype.startswith("LET "):
+					struct_type = dtype.removeprefix("LET ")
+				else:
+					struct_type = dtype.removeprefix("CONST ")
+
+				if struct_type not in self.outer.structs.keys():
+					code = get_code(self.source, var["index"])
+
+					throw(f"UTSC 307: Struct '{struct_type}' does not exist!", code)
+					return
+
+				try: member_offset = self.outer.structs[struct_type].index(name)*4
+				except ValueError: # member name not in list
+					code = get_code(self.source, var["index"])
+
+					throw(f"UTSC 307: Member '{name}' does not exist on struct '{struct_type}'", code)
+					return
+
+				self.reference_var(var["name"], var["index"])
+				self.instr(f"add eax, {member_offset}")
+				self.instr("mov eax, [eax]")
+				return
+
+		throw(f"UTSC 305: Dynamic objects are not yet implemented (trying to access property '{name})")
+
+
+
+
+
+
+
 
 	def make_arr_literal(self, vals: list[dict]):
 		# again, we use the constant 4 for 32-bit, but 64-bit needs 8
@@ -365,9 +410,17 @@ class FunctionCompiler(Compiler):
 
 		self.instr(f"lea eax, [{start}]")
 
-	def reference_var(self, name: str, index: int, lea: bool=False):
-		try: memaddr = self.symbols.get(name, index)["address"]
+	def reference_var(self, name: str, index: int, lea: bool=False, getfuncaddr: bool=False):
+		try: memaddr: str = self.symbols.get(name, index)["address"]
 		except TypeError: return # doesn't exist, error was thrown on utils.py side, just exit compilation
+
+		if getfuncaddr:
+			if memaddr.startswith("ebp"): # if it is a stack address
+				self.instr(f"mov eax, [{memaddr}]")
+				return
+
+			self.instr(f"lea eax, [{memaddr}]")
+			return
 
 		if lea:
 			self.instr(f"lea eax, [{memaddr}]")
@@ -376,24 +429,17 @@ class FunctionCompiler(Compiler):
 		self.instr(f"mov eax, [{memaddr}]")
 
 	def call_func(self, node: dict):
-		name: str = node["name"]
+		addr: dict = node["addr"]
 		args: list[dict] = node["arguments"]
-		index: int = node["index"]
-
-		try: addr: str = self.symbols.get(name, index)["address"] # make sure func exists
-		except TypeError: return # doesn't exist, error was thrown on utils.py side, just exit compilation
-		
-		if addr.startswith("ebp"): # if addr stored on stack ptr, dereference the ptr
-			addr = f"[{addr}]"
 
 		for arg in args[::-1]: # reverse args
 			self.generate_expression(arg)
 			self.instr("push eax")
 
-		self.instr(f"call {addr}")
+		self.generate_expression(addr, getfuncaddr=True)
+
+		self.instr("call eax") # address will be stored in eax
 		self.instr(f"add esp, {4*len(args)}")
-
-
 
 	#The two methods below allocate memory for the
 	#variable and place it in a symbol table

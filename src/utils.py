@@ -165,6 +165,10 @@ class SymbolTable:
 		return attr
 
 	def declare(self, name: str, dtype: str, sizeb: int, address: str):
+		if self.symbols.get(name, {}).get("type", "").startswith("CONST"):
+			throw(f"UTSC 306: Name Error: Attemped to redeclare to constant '{name}'")
+			return
+
 		self.symbols[name] = {
 			"type" : dtype, 
 			"size" : sizeb, 
@@ -178,10 +182,10 @@ class SymbolTable:
 
 		# ADD/TODO?: check if value is too large to be held (size > self.symbols[name]['size'])
 
-		if (var["type"] == "CONST") and (var["value"] is not None):
-			line, idx, linenum = strgetline(self.code, index)
-			code = formatline(line, idx, linenum)
-			throw(f"UTSC 306: Name Error: Attemped to assign to constant '{name}'", code)
+		if (var["type"].startswith("CONST")) and (var["value"] is not None):
+			code = get_code(self.code, index)
+			throw(f"UTSC 306: Name Error: Attemped to reassign to constant '{name}'", code)
+			return
 
 		var["value"] = value
 

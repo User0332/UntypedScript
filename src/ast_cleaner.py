@@ -1,3 +1,5 @@
+from json import loads
+
 # Right now, the ASTCleaner class just removes empty expressions
 # e.g. {"Expression @Idx[33]": {} } => {}
 
@@ -9,6 +11,9 @@ class ASTCleaner:
 		top = top if top else self.ast
 
 		key: str; node: dict
+
+		if type(top) is not dict:
+			top = loads(str(top))
 
 		for key, node in list(top.items()):
 			if type(node) != dict: continue
