@@ -48,11 +48,13 @@ def formatline(line: str, idx: int, linenum: int):
 def strgetline(string: str, index: int):
 	current_idx = 0
 	for i, line in enumerate(string.splitlines()):
-		current_idx+=1
 		for j in range(0, len(line)-1):
-			current_idx+=1
 			if current_idx == index:
 				return [line, j, i+1]
+			current_idx+=1
+
+		current_idx+=1
+
 
 		if current_idx == index:
 			return [line, j+1, i+1]

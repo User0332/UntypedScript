@@ -212,7 +212,7 @@ class Compiler:
 #
 
 class FunctionCompiler(Compiler):
-	def __init__(self, params: list[str], body: dict, code: str, outer: Compiler):
+	def __init__(self, params: dict[str, str], body: dict, code: str, outer: Compiler):
 		self.text = ""
 		self.body = body
 		self.allocated_bytes = 0
@@ -223,15 +223,18 @@ class FunctionCompiler(Compiler):
 		self.post_prolog = ""
 
 		arg_offset = 8
-		for param in params: # reserve space for each arg
+		for param, dtype in params.items(): # reserve space for each arg
 			addr = f"ebp+{arg_offset}"
 
-			self.symbols.declare(param, "LET", 4, addr)
+			self.symbols.declare(param, dtype, 4, addr)
 
 			arg_offset+=4
 
 	def instr(self, instr: str):
 		self.text+=f"\n\t{instr}"
+
+	def remove_last_instr(self):
+		self.text = '\n'.join(self.text.splitlines()[:-1])
 
 	def generate_expression(self, expr: dict, getfuncaddr: bool=False):
 		key: str; node: dict
@@ -240,9 +243,9 @@ class FunctionCompiler(Compiler):
 			if key.startswith("Binary Operation"):
 				op = key.removeprefix("Binary Operation ")
 
-				self.generate_expression(node[0])
+				self.generate_expression(node[0], getfuncaddr=getfuncaddr)
 				self.instr("push eax") #save result
-				self.generate_expression(node[1])
+				self.generate_expression(node[1], getfuncaddr=getfuncaddr)
 				self.instr("pop ebx") # load left node result into ebx
 
 				if op == '/': #integer division
@@ -302,10 +305,10 @@ class FunctionCompiler(Compiler):
 			elif key.startswith("Unary Operation"):
 				op = key.removeprefix("Unary Operation ")
 				if op == '-':
-					self.generate_expression(node)
+					self.generate_expression(node, getfuncaddr=getfuncaddr)
 					self.instr("neg eax")
 				elif op == "not":
-					self.generate_expression(node)
+					self.generate_expression(node, getfuncaddr=getfuncaddr)
 					self.instr("cmp eax, 0")
 					self.instr("sete al")
 					self.instr("movzx eax, al")
@@ -315,14 +318,14 @@ class FunctionCompiler(Compiler):
 				if op == "ref":
 					self.reference_var(node["name"], node["index"], lea=True)
 				elif op == "deref":
-					self.generate_expression(node)
+					self.generate_expression(node, getfuncaddr=getfuncaddr)
 					self.instr("mov eax, [eax]")
 			elif key.startswith("Numerical Constant"):
 				self.instr(f"mov eax, {node}")
 			elif key.startswith("Variable Reference"):
 				self.reference_var(node["name"], node["index"], getfuncaddr=getfuncaddr)
 			elif key.startswith("Anonymous Function"):
-				params: list[str] = node["parameters"]
+				params: dict[str, str] = node["parameters"]
 				body: dict = node["body"]
 
 				func = FunctionCompiler(params, body, self.source, self.outer)
@@ -358,7 +361,8 @@ class FunctionCompiler(Compiler):
 		if expr.get("Variable Reference") is not None:
 			var = expr["Variable Reference"]
 
-			dtype: str = self.symbols.get(var["name"], var["index"])["type"]
+			try: dtype: str = self.symbols.get(var["name"], var["index"])["type"]
+			except TypeError: return # var was not found, thrown on utils.py side
 
 			if dtype.startswith(("CONST ", "LET ")):
 				if dtype.startswith("LET "):
@@ -384,14 +388,7 @@ class FunctionCompiler(Compiler):
 				self.instr("mov eax, [eax]")
 				return
 
-		throw(f"UTSC 305: Dynamic objects are not yet implemented (trying to access property '{name})")
-
-
-
-
-
-
-
+		throw(f"UTSC 305: Dynamic objects are not yet implemented (trying to access property '{name}')")
 
 	def make_arr_literal(self, vals: list[dict]):
 		# again, we use the constant 4 for 32-bit, but 64-bit needs 8
@@ -465,6 +462,17 @@ class FunctionCompiler(Compiler):
 
 		self.allocated_bytes+=4
 	#
+
+	def assign_to_addr(self, node: dict):
+		addr = node["addr"]
+		value = node["value"]
+
+		self.generate_expression(value)
+		self.instr("push eax")
+		self.generate_expression(addr)
+		self.remove_last_instr() # we want the address, not the dereference of it
+
+		self.instr(f"pop DWORD [eax]")
 
 	def assign_variable(self, node: dict):
 		name = node["name"]
@@ -546,6 +554,8 @@ class FunctionCompiler(Compiler):
 				self.define_variable(node)
 			elif key.startswith("Variable Assignment"):
 				self.assign_variable(node)
+			elif key.startswith("Addr Assignment"):
+				self.assign_to_addr(node)
 			elif key.startswith("Function Call"):
 				self.call_func(node)
 			elif key.startswith("Return Statement"):

@@ -41,7 +41,12 @@ class AssemblyOptimizer:
 					movinstr = next(movinstr)
 					# here we use DWORD, but in the future, when the 64-bit compiler option is introduced, this needs to be dependent 
 					# on that option rather than just DWORD (e.g. it could be QWORD with 64-bit types)
-					self.optimized+=f"mov DWORD {movinstr.group(1)}, {mov_into_eax_val}\n"
+					dest = movinstr.group(1)
+					
+					if ('[' in dest) and ('[' in mov_into_eax_val):
+						raise StopIteration() # nasm will not accept two dereferenced addresses like this
+					
+					self.optimized+=f"mov DWORD {dest}, {mov_into_eax_val}\n"
 					mov_into_eax = False
 				except StopIteration:
 					if line == "push eax":

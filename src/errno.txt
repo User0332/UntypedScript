@@ -17,6 +17,7 @@ Parser (2XX)
 2 Unexpected EOF
 3 Expected token
 4 Constant variable was not assigned a value
+5 Duplicate parameter
 
 Compiler (3XX)
 1 File not found

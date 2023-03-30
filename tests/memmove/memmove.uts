@@ -1,0 +1,43 @@
+import { printf } from "<libc>"
+
+struct Word
+{
+	name, type
+}
+
+const main = () => {
+	const struct Word word = ["cool", "adjective"]
+
+	printf("Word Name: %s\n", word.name)
+	word.name = "box"
+	printf("Word Name: %s\n", word.name)
+
+	printf("Word Type: %s\n", word.type)
+	word.type = "noun"
+	printf("Word Type: %s\n", word.type)
+
+	const x = 4
+	const xptr = ref x
+
+	printf("x = %i\n", x)
+	deref(xptr) = 6
+	printf("x = %i\n", x)
+
+	const myarr = [1, 2, 3]
+
+	printf("myarr[0] = %i\n", myarr[0])
+	myarr[0] = 5
+	printf("myarr[0] = %i\n", myarr[0])
+
+	printf("myarr[1] = %i\n", myarr[1])
+	myarr[1] = 8
+	printf("myarr[1] = %i\n", myarr[1])
+
+	printf("myarr[2] = %i\n", myarr[2])
+	myarr[2] = 10
+	printf("myarr[2] = %i\n", myarr[2])
+
+
+}
+
+export { main }

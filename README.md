@@ -38,6 +38,9 @@ const get_person = () => {
 
 	return person
 
+	// WILL ALSO WORK (produces same effect as the above code, since types don't actually exist and the structs are just syntax sugar for arrays)
+	return ["Joe", 23]
+
 	// WILL NOT WORK
 	return (struct Person ["Joe", 23])
 }
@@ -67,7 +70,7 @@ const main = () => {
 export { main }
 ```
 
-In this manner, many operations with structs require implicit casts and to some extent wastage of memory. Dynamic objects (which are yet to be introduced), will not need these implicit casts, but will be much slower that structs and will take up more memory, so structs are still recommended for objects that are not created arbitrarily at runtime.
+In this manner, many operations with structs require implicit casts and to some extent wastage of memory. Dynamic objects (which are yet to be introduced), will not need these implicit casts, but will be much slower than structs and will also take up more memory than them (even with implicit casting), so structs are still recommended for objects that are not created arbitrarily at runtime.
 
 ## Next on the list to do:
 
@@ -76,19 +79,14 @@ In this manner, many operations with structs require implicit casts and to some 
 - Solve recursion errors in parser
 - Remove weird parser bugs that result in a lot of errors
 - Floats
-- Array Literals
-	- `arr[i]` syntax
-	- Multidimensional array literals and `arr[i][j]` syntax
-- Add asm optimizations
+- Add asm optimizations (in progress, constant task)
 - Elif Blocks (not else-ifs)
 - For loops
 - 64-bit programs and types
 - Hoist global-level funcs
-- Being able to 'call' expressions - i.e. call an anonymous function - `(() => puts("hi"))()`
-	- Recycle memory used by no-longer-referenced anonymous functions
 - Namespaces
-- Allow for both stdcall and cdecl functions
-- Ability to move data into memory locations (e.x. `{deref(myptr) = 4}`, `{arr[1] = 2}` or `{person.age = 45}`)
+- Allow for stdcall functions
+- Be able to allocate arrays on the heap (e.g. `heapalloc [1, 2, 3]` would create an array using `malloc()` and move 1, 2, and 3 into it)
 - DLL integration
 	- Imports
 	- Exports
@@ -96,13 +94,15 @@ In this manner, many operations with structs require implicit casts and to some 
 - Maybe objects?
 	- Both Structs (implemented like in C) and Dynamic Objects (which are much slower but can be created arbitrarily at runtime)
 		- Export structs via parser's `struct_expr()` function and `export struct <name>` statement
-		- Ability to change struct members
 	- Object creation syntax
 	- Object utils/dynamic objects
 	- Object integration with C structs
 	- Object destructuring
-- Maybe type hinting or a VSCode extension
+- Type hinting for optimization
+- May integrate a sort of lightweight runtime in the future (for a try-catch framework, etc.) that itself runs on the C runtime
+	- If this is added there will be an option to compile with the UTS runtime and an option to compile without the runtime (both executables will be standalone (as long as the C runtime exists), the UTS runtime will be automatically linked into the output)
+- VSCode extension
 
 ## Notes
 
-- For the moment, \uXXXX and \XXXX escape codes are not permitted
+- For the moment, \uXXXX and \XXXX escape codes are not permitted, and may continue to not be permitted in the future (this feature may never be added)

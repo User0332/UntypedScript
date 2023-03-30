@@ -1,0 +1,9 @@
+import { printf } from "<libc>"
+
+const main = () => {
+	((arg) => {
+		printf("Hello, World!\n%s\n", arg)
+	})("This prints second!")
+}
+
+export { main }

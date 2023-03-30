@@ -79,16 +79,17 @@ class VariableDefinitionNode(Node):
 	def __init__(self, dtype: str, name: str, expression: Node, idx: int):
 		self.dtype = dtype
 		self.name = name
-		self.expr = str(expression)
+		self.expr = expression
 		self.idx = idx
 
 	def __repr__(self):
 		return f'{{"Variable Definition" : {{ "type" : "{self.dtype}", "name" : "{self.name}", "value" : {self.expr}, "index" : {self.idx} }} }}'
 
+# Technically this could be an addr assignment node, but it makes the program faster
 class VariableAssignmentNode(Node):
 	def __init__(self, name: str, expression: Node, idx: int):
 		self.name = name
-		self.expr = str(expression)
+		self.expr = expression
 		self.idx = idx
 
 	def __repr__(self):
@@ -101,6 +102,14 @@ class VariableAccessNode(Node):
 
 	def __repr__(self):
 		return f'{{"Variable Reference": {{ "name" : "{self.name}", "index" : {self.idx} }} }}'
+
+class AddrAssignmentNode(Node):
+	def __init__(self, addr: Node, value: Node):
+		self.addr = addr
+		self.expr = value
+
+	def __repr__(self):
+		return f'{{ "Addr Assignment": {{ "addr": {self.addr}, "value": {self.expr} }} }}'
 
 class ExprSubscriptNode(Node):
 	def __init__(self, expr: Node, offset: Node):
@@ -185,14 +194,6 @@ class ExportNode(Node):
 	def __repr__(self) -> str:
 		return f'{{ "Export": {self.names} }}'
 
-class StructCastNode(Node):
-	def __init__(self, name: str, expr: Node):
-		self.name = name
-		self.node = expr
-
-	def __repr__(self) -> str:
-		return f'{{ "Struct Cast": {{ "name": "{self.name}", "expr": {self.node} }} }}'
-
 class ArrayLiteralNode(Node):
 	def __init__(self, vals: list[Node]):
 		self.vals = vals
@@ -263,64 +264,6 @@ class Parser:
 
 		if expr is None: return "{}"
 
-		if self.current.value == '[':
-			self.advance()
-			# BUG: cannot stack like arr[i][j], can only do something like arr[arr[i]], which is not exactly what is wanted
-			# NOTE: the same problem goes for the function calling - expr()() is not possible at the moment
-			offset = self.expr_wrapper()
-
-			if self.current.value != ']':
-				self.decrement()
-
-				code = get_code(self.code, self.current.idx)
-
-				throw(f"UTSC 203: Expected ')', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
-
-				self.advance()
-				return UnimplementedNode()
-
-			self.advance() # pass closing square bracket
-
-			return ExprSubscriptNode(expr, offset)
-
-		if self.current.value == '(':
-			self.advance()
-
-			arguments = self.get_args()
-
-			self.advance() # pass closing paren, errors are handled by get_args()
-
-			return FunctionCallNode(
-				expr,
-				arguments
-			)
-
-		if self.current.value == '.':
-			start = self.current.idx
-			node = PropertyAccessNode(expr, "")
-
-			while self.current.value == '.': # property access
-				if self.current.idx != start: # if this is not the first go-round
-					node = PropertyAccessNode(node, "")
-
-				self.advance()
-
-				if self.current.type != "IDENTIFIER":
-					self.decrement()
-
-					code = get_code(self.code, self.current.idx)
-
-					throw(f"UTSC 203: Expected identifier after '.' operator, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
-					
-					self.advance()
-					return UnimplementedNode()
-
-				node.name = self.current.value
-				
-				self.advance()
-
-			return node
-
 		return expr
 
 
@@ -366,7 +309,7 @@ class Parser:
 
 	# Power (**) operator
 	def power(self):
-		return self.bin_op(self.atom, ("**", ), self.factor)
+		return self.bin_op(self.wrap_atom, ("**", ), self.factor)
 
 	#Grammar Factor
 	def factor(self):
@@ -417,7 +360,7 @@ class Parser:
 
 		self.skip_newlines()
 
-		expression = self.expr_wrapper()
+		expression = self.comp_expr()
 		
 		self.skip_newlines()
 
@@ -435,7 +378,7 @@ class Parser:
 			self.in_paren.pop()
 
 			code = get_code(self.code, self.current.idx)
-			
+
 			throw(f"UTSC 203: Expected ')', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 			
 			self.advance()
@@ -523,9 +466,9 @@ class Parser:
 		if current.type == "IDENTIFIER":
 			self.advance()
 			
-			if self.current.value == '=':
+			if self.current.value == '=': # this needs to be in expr()
 				self.advance()
-				expr = self.expr_wrapper()
+				expr = self.comp_expr()
 				if expr is None:
 					self.decrement()
 
@@ -543,7 +486,7 @@ class Parser:
 				
 				if self.current.value == '=':
 					self.advance()
-					expr = self.expr_wrapper()
+					expr = self.comp_expr()
 					if expr is None:
 						self.decrement()
 
@@ -567,9 +510,6 @@ class Parser:
 				self.decrement() # back up to operator token
 
 			return VariableAccessNode(current)
-			
-
-
 
 		if current.type in ("INTEGER", "FLOAT"):
 			self.advance()
@@ -578,7 +518,7 @@ class Parser:
 			self.advance()
 			return StringLiteral(current.value)
 		if current.value == '[':
-			self.advance(),
+			self.advance()
 
 			vals = self.get_args(']')
 
@@ -589,15 +529,34 @@ class Parser:
 		if current.value == '(':
 			self.advance()
 
-			if (self.current.type == "IDENTIFIER") or (self.current.value == ')'):
+			if (self.current.type in ("IDENTIFIER", "STRUCT")) or (self.current.value == ')'):
 				fallback_idx = self.current.idx
-				parameters = []
+				vartype = ""
+				parameters: dict[str, str] = {}
 
 				while self.current.value != ')':
+					vartype = "LET"
+					if self.current.type == "STRUCT":
+						self.advance()
+						if self.current.type == "IDENTIFIER":
+							vartype = f"LET {self.current.value}"
+							self.advance()
+						else:
+							self.decrement()
+							code = get_code(self.code, self.current.idx)
+							
+							throw("UTSC 203: Expected identifier (struct name) after 'struct' keyword", code)
+							return UnimplementedNode()
+
 					if self.current.type != "IDENTIFIER":
 						return self.fallback_paren_expr(fallback_idx)
+					
+					if self.current.value in parameters.keys():
+						code = get_code(self.code, self.current.idx)
 
-					parameters.append(self.current.value)
+						warn("UTSC 205: Duplicate parameter name, taking the last occurrence", code)
+
+					parameters[self.current.value] = vartype
 
 					self.advance()
 					
@@ -641,81 +600,6 @@ class Parser:
 			else:
 				return self.fallback_paren_expr(self.current.idx)
 
-		if current.value == "if":
-			self.advance()
-			return self.conditional_expr()
-		if current.value == "while":
-			self.advance()
-			return self.while_expr()
-
-		if self.in_func and self.current.type == "RETURN":
-			self.advance()
-			expr = self.expr_wrapper()
-
-			return FunctionReturnStatement(expr)
-		if current.type == "EXPORT" and not self.in_func:
-			self.advance()
-
-			if self.current.value != '{':
-				code = get_code(self.code, self.current.idx)
-
-				throw(f"UTSC 203: Expected '}}', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
-				
-				self.advance()
-				return UnimplementedNode()
-
-			self.advance()
-
-			names = self.grab_import_export_names()
-			
-			return ExportNode(names)
-
-		if current.type == "IMPORT" and not self.in_func:
-			self.advance()
-
-			names: list[str] = []
-			
-			if self.current.value == '{':
-				self.advance()
-
-				names = self.grab_import_export_names()
-			else:
-				if self.current.type != "IDENTIFIER":
-					code = get_code(self.code, self.current.idx)
-
-					throw(f"UTSC 203: Expected identifier or '{{', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
-
-					self.advance()
-					return UnimplementedNode()
-
-				names.append(self.current.value)
-
-				self.advance()
-
-			if self.current.type != "FROM":
-				code = get_code(self.code, self.current.idx)
-
-				throw(f"UTSC 203: Expected 'from', got {self.current.value!r}", code)
-
-				self.advance()
-				return UnimplementedNode()
-
-			self.advance()
-
-			if self.current.type != "STRING":
-				code = get_code(self.code, self.current.idx)
-
-				throw(f"UTSC 203: Expected module name, got {self.current.value!r}", code)
-				
-				self.advance()
-				return UnimplementedNode()
-
-			modnode = self.current
-
-			self.advance()
-
-			return ImportNode(modnode.value, names, modnode.idx)
-
 		code = get_code(self.code, current.idx)
 		
 		throw(f"UTSC 203: Expected int, float, identifier, '+', '-', or '(', got {fmt_type(current.type)}", code)
@@ -725,7 +609,7 @@ class Parser:
 
 	#Grammar Expressions
 	def conditional_expr(self):
-		condition = self.expr_wrapper()
+		condition = self.comp_expr()
 
 		if condition is None:
 			code = get_code(self.code, self.current.idx)
@@ -788,7 +672,7 @@ class Parser:
 		return ConditionalStatementNode(condition, if_body, else_body)
 
 	def while_expr(self):
-		condition = self.expr_wrapper()
+		condition = self.comp_expr()
 
 		if condition is None:
 			code = get_code(self.code, self.current.idx)
@@ -845,12 +729,85 @@ class Parser:
 		elif self.current.value == "deref":
 			self.advance()
 
-			expr = self.expr_wrapper()
+			expr = self.comp_expr()
 
 			return DerefOpNode(expr)
 
 		return self.bin_op(self.num_expr, ("==", "!=", '<', '>', "<=", ">=", "and", "or"))
 		
+	def wrap_atom(self):
+		expr = self.atom()
+
+		if self.current.value in ('.', '[', '('):
+			start = self.current.idx
+
+			if self.current.value == '.':
+				node = PropertyAccessNode(expr, "")
+			elif self.current.value == '[':
+				node = ExprSubscriptNode(expr, {})
+			else:
+				node = FunctionCallNode(expr, [])
+
+			while self.current.value in ('.', '[', '('): # property access
+				op = self.current.value
+
+				if self.current.idx != start: # if this is not the first go-round
+					if op == '.':
+						node = PropertyAccessNode(node, "")
+					elif op == '[':
+						node = ExprSubscriptNode(node, {})
+					else:
+						node = FunctionCallNode(node, [])
+
+				self.advance()
+				
+				if op == '.':
+					if self.current.type != "IDENTIFIER":
+						self.decrement()
+
+						code = get_code(self.code, self.current.idx)
+
+						throw(f"UTSC 203: Expected identifier after '.' operator, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+						
+						self.advance()
+						return UnimplementedNode()
+
+					node.name = self.current.value
+					
+					self.advance()
+
+					continue
+
+				if op == '[':
+					offset = self.comp_expr()
+
+					if self.current.value != ']':
+						self.decrement()
+
+						code = get_code(self.code, self.current.idx)
+
+						throw(f"UTSC 203: Expected ']', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+
+						self.advance()
+						return UnimplementedNode()
+
+					node.offset = offset
+
+					self.advance()
+
+					continue
+
+				# otherwise, it must be an open paren (function call)
+				arguments = self.get_args()
+
+				self.advance()
+
+				node.args = arguments
+
+			return node
+
+		return expr
+
 	def struct_expr(self):
 		if self.current.type != "IDENTIFIER":
 			self.decrement()
@@ -881,7 +838,6 @@ class Parser:
 		self.structs[name] = members
 
 		return None
-
 
 	def num_expr(self):
 		return self.bin_op(self.term, ("+", "-"))
@@ -960,11 +916,103 @@ class Parser:
 		if self.current.type == "STRUCT":
 			self.advance()
 			return self.struct_expr()
+		if self.current.type == "EXPORT" and not self.in_func:
+			self.advance()
 
+			if self.current.value != '{':
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected '}}', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+				
+				self.advance()
+				return UnimplementedNode()
+
+			self.advance()
+
+			names = self.grab_import_export_names()
+			
+			return ExportNode(names)
+
+		if self.current.type == "IMPORT" and not self.in_func:
+			self.advance()
+
+			names: list[str] = []
+			
+			if self.current.value == '{':
+				self.advance()
+
+				names = self.grab_import_export_names()
+			else:
+				if self.current.type != "IDENTIFIER":
+					code = get_code(self.code, self.current.idx)
+
+					throw(f"UTSC 203: Expected identifier or '{{', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+
+					self.advance()
+					return UnimplementedNode()
+
+				names.append(self.current.value)
+
+				self.advance()
+
+			if self.current.type != "FROM":
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected 'from', got {self.current.value!r}", code)
+
+				self.advance()
+				return UnimplementedNode()
+
+			self.advance()
+
+			if self.current.type != "STRING":
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected module name, got {self.current.value!r}", code)
+				
+				self.advance()
+				return UnimplementedNode()
+
+			modnode = self.current
+
+			self.advance()
+
+			return ImportNode(modnode.value, names, modnode.idx)
+
+		if self.current.type == "IF":
+			self.advance()
+			return self.conditional_expr()
+
+		if self.current.value == "while":
+			self.advance()
+			return self.while_expr()
+
+		if self.in_func and (self.current.type == "RETURN"):
+			self.advance()
+			expr = self.comp_expr()
+
+			return FunctionReturnStatement(expr)
 		if self.current.type == "NEWLINE":
 			return None
 
-		return self.bin_op(self.comp_expr, ('and', 'or'))
-	#
+		node = self.bin_op(self.comp_expr, ('and', 'or'))
+
+		if (type(node) in (ExprSubscriptNode, PropertyAccessNode, DerefOpNode)) and (self.current.value == '='):
+			self.advance()
+
+			expr = self.comp_expr()
+			if expr is None:
+				self.decrement()
+
+				code = get_code(self.code, self.current.idx)
+				
+				throw(f"UTSC 203: Expected expression after assignment operator '=', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+				
+				self.advance()
+				return UnimplementedNode()
+			else:
+				return AddrAssignmentNode(node, expr)
+
+		return node
 
 #
