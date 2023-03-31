@@ -210,8 +210,9 @@ class PropertyAccessNode(Node):
 		return f'{{ "Property Access": {{ "expr": {self.expr}, "name": "{self.name}" }} }}'
 	
 class HeapAllocationNode(Node):
-	def __init__(self, vals: list[Node]):
+	def __init__(self, vals: list[Node], magic_num: int):
 		self.vals = vals
+		self.magic_num = magic_num
 
 	def __repr__(self) -> str:
 		return f'''
@@ -220,7 +221,7 @@ class HeapAllocationNode(Node):
 			"Exec-ExpressionA": {
 				VariableDefinitionNode(
 					"LET", 
-					".temp",
+					f".temp{self.magic_num}",
 					FunctionCallNode(
 						VariableAccessNode(
 							Token(["", "malloc", 0])
@@ -237,7 +238,7 @@ class HeapAllocationNode(Node):
 						AddrAssignmentNode(
 							ExprSubscriptNode(
 								VariableAccessNode(
-									Token([None, ".temp", 0])
+									Token([None, f".temp{self.magic_num}", 0])
 								),
 								NumNode(i)
 							),
@@ -250,7 +251,7 @@ class HeapAllocationNode(Node):
 			},
 			"ExpressionA": {
 				VariableAccessNode(
-					Token([None, ".temp", 0])
+					Token([None, f".temp{self.magic_num}", 0])
 				)
 			}
 		}}'''
@@ -261,6 +262,7 @@ class Parser:
 	def __init__(self, tokens: list, code):
 		self.tokens = tokens
 		self.code = code
+		self.magic_num = -1 # misc number that will never be the same in between uses
 		self.in_paren = []
 		self.in_func = []
 		self.idx = -1
@@ -789,7 +791,9 @@ class Parser:
 
 				self.advance() # pass last square bracket
 
-				return HeapAllocationNode(vals)
+				self.magic_num+=1
+
+				return HeapAllocationNode(vals, self.magic_num)
 			
 			code = get_code(self.current, self.current.idx)
 
