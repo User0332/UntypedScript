@@ -57,7 +57,7 @@ class SyntaxTreePreproccesor:
 
 		return False
 
-	def simplify(self, top: dict=None) -> tuple[int, dict]:
+	def simplify(self, top: dict=None) -> dict:
 		key: str; node: dict
 
 		new_nodes = []

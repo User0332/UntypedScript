@@ -208,6 +208,52 @@ class PropertyAccessNode(Node):
 
 	def __repr__(self) -> str:
 		return f'{{ "Property Access": {{ "expr": {self.expr}, "name": "{self.name}" }} }}'
+	
+class HeapAllocationNode(Node):
+	def __init__(self, vals: list[Node]):
+		self.vals = vals
+
+	def __repr__(self) -> str:
+		return f'''
+		{{
+			"Verify-Imported": ["malloc", "heapalloc"],
+			"Exec-ExpressionA": {
+				VariableDefinitionNode(
+					"LET", 
+					".temp",
+					FunctionCallNode(
+						VariableAccessNode(
+							Token(["", "malloc", 0])
+						), 
+						[NumNode(len(self.vals)*4)]
+					),
+					0
+				)
+			},
+			{
+				",".join(
+					f"""
+					"Exec-Expression{i}": {
+						AddrAssignmentNode(
+							ExprSubscriptNode(
+								VariableAccessNode(
+									Token([None, ".temp", 0])
+								),
+								NumNode(i)
+							),
+							val
+						)
+					}
+					"""
+					for i, val in enumerate(self.vals)
+				)
+			},
+			"ExpressionA": {
+				VariableAccessNode(
+					Token([None, ".temp", 0])
+				)
+			}
+		}}'''
 #
 
 #Parser
@@ -270,7 +316,7 @@ class Parser:
 	#gets blocks of code in between curly braces
 	def get_body(self):
 		body = {}
-		while self.current.value != "}":				
+		while self.current.value != "}":			
 			expr = str(self.expr_wrapper())
 
 			body[f"Expression @Idx[{self.idx}]"] = loads(expr)
@@ -732,6 +778,23 @@ class Parser:
 			expr = self.comp_expr()
 
 			return DerefOpNode(expr)
+		
+		elif self.current.type == "HEAP_ALLOC":
+			self.advance()
+
+			if self.current.value == '[':
+				self.advance()
+
+				vals = self.get_args(']')
+
+				self.advance() # pass last square bracket
+
+				return HeapAllocationNode(vals)
+			
+			code = get_code(self.current, self.current.idx)
+
+			throw(f"UTSC 203: Expected array literal after 'heapalloc', got {fmt_type(self.current.type)}", code)
+			return UnimplementedNode()
 
 		return self.bin_op(self.num_expr, ("==", "!=", '<', '>', "<=", ">=", "and", "or"))
 		

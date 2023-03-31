@@ -1,0 +1,38 @@
+import { printf, malloc, free } from "<libc>"
+
+struct Person
+{
+	name, age, sayhello
+}
+
+struct Car { owner }
+
+const get_person = () => {
+	// we must create this on the heap so that the ptr stays after the function exits
+	
+	const struct Person p = heapalloc ["Jeff", 23, (struct Person this) => {
+		printf("Hello! My Name is %s and I am %i years old!\n", this.name, this.age)
+	}]
+
+	return p
+}
+
+const main = () => {
+	const struct Person person = (get_person())
+	printf("Person Name: %s\n", person.name)
+
+	const struct Car mycar = [person]
+	const struct Person car_owner = mycar.owner
+
+	printf("%i\n", person == car_owner)
+
+	printf("Car Owner Name: %s\n", car_owner.name)
+
+	// we can, but don't need to pass in the "car_owner" variable as a 'this' argument because it is already on the stack
+	// however, if the method accepts multiple arguments, the 'this' argument must be explicitly passed
+	car_owner.sayhello()
+
+	free(person)
+}
+
+export { main }

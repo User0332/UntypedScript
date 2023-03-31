@@ -30,5 +30,6 @@ Compiler (3XX)
 8 Invalid target for expression (ex. i = return)
 9 Multiple symbol definition
 10 Cannot account for multiple symbol definitions
+11 Special or exceptional error/warning
 
 Other Modules (4XX)

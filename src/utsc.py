@@ -3,6 +3,7 @@ from sequential_lexer import Lexer
 from uts_parser import Parser
 from ast_cleaner import ASTCleaner
 from ast_preprocessor import SyntaxTreePreproccesor
+from code_lowerer import CodeLowerer
 from compiler import Compiler
 from optimizer import AssemblyOptimizer
 from utils import (
@@ -116,7 +117,7 @@ def main():
 	if args.out == None:
 		out = basesource+".o"
 		if not (executable or runfile): warn("UTSC 004: -o option unspecified, assuming object file", f">{out}\n")
-	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll", ".exports", ".structs")) and args.out != 'NULL':
+	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll", ".exports", ".structs", ".uts")) and args.out != 'NULL':
 		warn(f"UTSC 004: '{args.out}' is an invalid output file. Switching to object file by default.")
 		out = basesource+".o"
 	else:
@@ -186,6 +187,13 @@ def main():
 	if out.endswith(".structs"):
 		with open(out, 'w') as f:
 			f.write(dumps(parser.structs, indent=2))
+
+	if out.endswith(".uts"):
+		lowered = CodeLowerer(raw_ast, code).lower()
+		with open(out, 'w') as f:
+			f.write(
+				lowered
+			)
 
 	throwerrors()
 	if warnings: printwarnings()

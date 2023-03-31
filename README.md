@@ -79,6 +79,7 @@ In this manner, many operations with structs require implicit casts and to some 
 - Solve recursion errors in parser
 - Remove weird parser bugs that result in a lot of errors
 - Floats
+- Add structs back into program when lowering code
 - Add asm optimizations (in progress, constant task)
 - Elif Blocks (not else-ifs)
 - For loops
@@ -86,7 +87,6 @@ In this manner, many operations with structs require implicit casts and to some 
 - Hoist global-level funcs
 - Namespaces
 - Allow for stdcall functions
-- Be able to allocate arrays on the heap (e.g. `heapalloc [1, 2, 3]` would create an array using `malloc()` and move 1, 2, and 3 into it)
 - DLL integration
 	- Imports
 	- Exports

@@ -36,7 +36,8 @@ class Lexer:
 			"asm": "INLINE_ASSEMBLY",
 			"ref": "ADDR_OP",
 			"deref": "ADDR_OP",
-			"struct": "STRUCT"
+			"struct": "STRUCT",
+			"heapalloc": "HEAP_ALLOC"
 		}
 		self.SPECIALS = "()[]{}.:,;"
 		self.OPERATORS = (

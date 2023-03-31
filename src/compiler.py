@@ -31,6 +31,7 @@ class Compiler:
 		self.link_with: list[str] = []
 		self.exports: list[str] = []
 		self.imports: list[str] = []
+		self.imported_names: list[str] = []
 
 		# add more options - i.e. architecture from cmd line args
 		self.platform = "win32" if sys_platform == "win32" else "elf32"
@@ -173,6 +174,8 @@ class Compiler:
 
 			self.symbols.declare(name, "CONST", 4, f"_{name}")
 
+			self.imported_names.append(name)
+
 		self.imports.append(module)
 
 		for linked_with in self.link_with:
@@ -205,7 +208,8 @@ class Compiler:
 				code = get_code(self.source, node["index"])
 				throw("UTSC 304: Assignments not allowed in global scope.", code)
 			else:
-				throw(f"UTSC 305: Unimplemented or Invalid AST Node '{key}' (global scope)")
+				throw(f"(fatal) UTSC 305: Unimplemented or Invalid AST Node '{key}' (global scope)")
+				return
 
 		return self.asm
 	#
@@ -351,8 +355,17 @@ class FunctionCompiler(Compiler):
 				self.make_arr_literal(node)
 			elif key.startswith("Property Access"):
 				self.access_prop(node)
+			elif key.startswith("Expression"):
+				self.generate_expression(node, getfuncaddr=getfuncaddr)
+			elif key.startswith("Exec-Expression"):
+				self.traverse(node)
+			elif key.startswith("Verify-Imported"):
+				if node[0] not in self.outer.imported_names:
+					throw(f"(fatal) UTSC 311: You must import '{node[0]}' in order to use '{node[1]}'")
+					return
 			else:
-				throw(f"UTSC 308: Invalid target for expression '{key}'")
+				throw(f"(fatal) UTSC 308: Invalid target for expression '{key}'")
+				return
 
 	def access_prop(self, node: dict):
 		expr: dict = node["expr"]
@@ -565,6 +578,7 @@ class FunctionCompiler(Compiler):
 			elif key.startswith("While Loop"):
 				self.generate_while(node)
 			else:
-				throw(f"UTSC 305: Unimplemented or Invalid AST Node '{key}'")
+				throw(f"(fatal) UTSC 305: Unimplemented or Invalid AST Node '{key}'")
+				return
 
 		return f"\t{self.generate_prolog()}\n\t{self.text}\n\t{self.generate_epilog()}"
