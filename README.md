@@ -76,7 +76,7 @@ In this manner, many operations with structs require implicit casts and to some 
 
 At the moment (although the test conducted is very small), there seems to be a neglibile performance difference while using structs versus using objects. They average out at 25.14575ms for structs and 25.843025ms for objects. However, it is important to note that the struct average would be about one millisecond lower if there was no outlier.
 
-![Chart of Struct vs. Object Performance](struct-obj-perf.png)
+![Chart of Struct vs. Object Performance](readme-assets/struct-obj-perf.png)
 
 ## Next on the list to do:
 
