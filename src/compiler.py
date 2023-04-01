@@ -238,7 +238,9 @@ class FunctionCompiler(Compiler):
 		self.text+=f"\n\t{instr}"
 
 	def remove_last_instr(self):
+		instr = self.text.splitlines()[-1]
 		self.text = '\n'.join(self.text.splitlines()[:-1])
+		return instr
 
 	def generate_expression(self, expr: dict, getfuncaddr: bool=False):
 		key: str; node: dict
@@ -320,7 +322,9 @@ class FunctionCompiler(Compiler):
 				op = key.removeprefix("Addr Operation ")
 
 				if op == "ref":
-					self.reference_var(node["name"], node["index"], lea=True)
+					self.generate_expression(node["expr"])
+					instr = self.remove_last_instr()
+					self.instr(f"lea eax, {instr.split(', ')[1]}")
 				elif op == "deref":
 					self.generate_expression(node, getfuncaddr=getfuncaddr)
 					self.instr("mov eax, [eax]")
@@ -361,7 +365,7 @@ class FunctionCompiler(Compiler):
 				self.traverse(node)
 			elif key.startswith("Verify-Imported"):
 				if node[0] not in self.outer.imported_names:
-					throw(f"(fatal) UTSC 311: You must import '{node[0]}' in order to use '{node[1]}'")
+					throw(f"(fatal) UTSC 311: You must import '{node[0]}' in order to use {node[1]}")
 					return
 			else:
 				throw(f"(fatal) UTSC 308: Invalid target for expression '{key}'")
@@ -401,7 +405,16 @@ class FunctionCompiler(Compiler):
 				self.instr("mov eax, [eax]")
 				return
 
-		throw(f"UTSC 305: Dynamic objects are not yet implemented (trying to access property '{name}')")
+		# otherwise, it is a dynamic object, manually call the get function
+
+		self.generate_expression({ "String Literal": name})
+		self.instr("push eax")
+		self.generate_expression(expr)
+		self.instr("push eax")
+		self.instr("call [eax]")
+		self.instr("add esp, 8")
+		self.instr("mov eax, [eax]")
+
 
 	def make_arr_literal(self, vals: list[dict]):
 		# again, we use the constant 4 for 32-bit, but 64-bit needs 8
@@ -420,7 +433,7 @@ class FunctionCompiler(Compiler):
 
 		self.instr(f"lea eax, [{start}]")
 
-	def reference_var(self, name: str, index: int, lea: bool=False, getfuncaddr: bool=False):
+	def reference_var(self, name: str, index: int, getfuncaddr: bool=False):
 		try: memaddr: str = self.symbols.get(name, index)["address"]
 		except TypeError: return # doesn't exist, error was thrown on utils.py side, just exit compilation
 
@@ -429,10 +442,6 @@ class FunctionCompiler(Compiler):
 				self.instr(f"mov eax, [{memaddr}]")
 				return
 
-			self.instr(f"lea eax, [{memaddr}]")
-			return
-
-		if lea:
 			self.instr(f"lea eax, [{memaddr}]")
 			return
 

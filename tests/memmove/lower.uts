@@ -1,0 +1,52 @@
+import { printf } from "<libc>"
+
+const main = (() => {
+	const word = (["cool","adjective"])
+
+(printf)("Word Name: %s\n",deref (word))
+
+(deref (word)) = ("box")
+
+(printf)("Word Name: %s\n",deref (word))
+
+(printf)("Word Type: %s\n",deref (word+4))
+
+(deref (word+4)) = ("noun")
+
+(printf)("Word Type: %s\n",deref (word+4))
+
+const x = (4)
+
+const xptr = (ref x)
+
+(printf)("x = %i\n",x)
+
+(deref (xptr)) = (6)
+
+(printf)("x = %i\n",x)
+
+const myarr = ([1,2,3])
+
+(printf)("myarr[0] = %i\n",deref ((myarr)+((0)*(4))))
+
+(deref ((myarr)+((0)*(4)))) = (5)
+
+(printf)("myarr[0] = %i\n",deref ((myarr)+((0)*(4))))
+
+(printf)("myarr[1] = %i\n",deref ((myarr)+((1)*(4))))
+
+(deref ((myarr)+((1)*(4)))) = (8)
+
+(printf)("myarr[1] = %i\n",deref ((myarr)+((1)*(4))))
+
+(printf)("myarr[2] = %i\n",deref ((myarr)+((2)*(4))))
+
+(deref ((myarr)+((2)*(4)))) = (10)
+
+(printf)("myarr[2] = %i\n",deref ((myarr)+((2)*(4))))
+
+
+})
+
+export { main }
+

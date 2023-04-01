@@ -1,0 +1,10 @@
+import { printf } from "<libc>"
+
+const main = () => {
+    const x = [1, 2, 3, 4, 5]
+    printf("%i\n", x)
+    printf("%i\n", ref [1, 2, 3, 4, 5])
+    printf("%i\n", ref x[2])
+}
+
+export { main }

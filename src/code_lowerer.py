@@ -4,10 +4,12 @@ from ast_preprocessor import SyntaxTreePreproccesor, SigNonConstantNumericalExpr
 from typing import Union
 
 class CodeLowerer:
-	def __init__(self, ast: dict[str, Union[dict, str, list]], source: str):
+	def __init__(self, ast: dict[str, Union[dict, str, list]], source: str, structs: dict[str, list[str]]):
 		self.ast = ast
 		self.source = source
 		self.code = ""
+		self.structs = structs
+		self.struct_vars = dict[str, str]()
 
 	def gen_expr_wrap(self, expr: dict):
 		self.code+='('
@@ -41,8 +43,8 @@ class CodeLowerer:
 				params: dict[str, str] = node["parameters"]
 				body: dict = node["body"]
 
-				self.code+=f"""({', '.join(params)}) => {{
-	{FunctionLowerer(body, self.source).lower()}
+				self.code+=f"""({','.join(params)}) => {{
+	{FunctionLowerer(body, self.source, self.structs).lower()}
 }}"""
 			elif key.startswith("String Literal"):
 				self.code+=dumps(node)
@@ -51,6 +53,21 @@ class CodeLowerer:
 			elif key.startswith("Array Literal"):
 				self.make_arr_literal(node)
 			elif key.startswith("Property Access"):
+				if "Variable Reference" in node["expr"]:
+					name: str = node["expr"]["Variable Reference"]["name"]
+					if name in self.struct_vars:
+						members = self.structs[self.struct_vars[name]]
+						prop = node["name"]
+
+						if prop not in members:
+							code = get_code(self.source, node["expr"]["Variable Reference"]["index"])
+
+							throw(f"UTSC 307: Member '{name}' does not exist on struct '{self.struct_vars[name]}'", code)
+							return
+						
+						self.code+=f"deref ({name}{'+'+str(members.index(prop)*4) if members.index(prop) else ''})"
+						continue
+
 				self.generate_expression(node["expr"])
 				self.code+=f".{node['name']}"
 			elif key.startswith("Expression"):
@@ -67,9 +84,9 @@ class CodeLowerer:
 
 		for val in vals:
 			self.generate_expression(val)
-			self.code+=', '
+			self.code+=','
 
-		self.code = self.code[:-2]+']'
+		self.code = self.code[:-1]+']'
 
 	def call_func(self, node: dict):
 		addr: dict = node["addr"]
@@ -80,24 +97,27 @@ class CodeLowerer:
 
 		for arg in args:
 			self.generate_expression(arg)
-			self.code+=', '
+			self.code+=','
 
-		self.code = self.code[:-2]+')'
+		self.code = self.code[:-1]+')'
 
 	def import_names(self, node: dict):
 		names: list[str] = node["names"]
 		module = node["module"]
 
-		self.code+=f"import {{ {', '.join(names)} }} from \"{module}\""
+		self.code+=f"import {{ {','.join(names)} }} from \"{module}\""
 
 	def export_names(self, node: list[str]):
-		self.code+=f"export {{ {', '.join(node)} }}"
+		self.code+=f"export {{ {','.join(node)} }}"
 
 	def declare_variable(self, node: dict):
 		name: str = node["name"]
 		_type: str = node["type"]
 
-		self.code+=f"{_type.lower() if _type in ('CONST', 'LET') else _type.split()[0].lower()+' struct '+_type.split()[1]} {name}"
+		if _type not in ("CONST", "LET"):
+			self.struct_vars[name] = _type.split()[1]
+
+		self.code+=f"{_type.split()[0].lower()} {name}"
 
 	def define_variable(self, node: dict):
 		value: dict = node["value"]
@@ -134,7 +154,7 @@ class CodeLowerer:
 				throw("UTSC 304: Assignments not allowed in global scope.", code)
 			else:
 				throw(f"(fatal) UTSC 305: Unimplemented or Invalid AST Node '{key}' (global scope)")
-				return
+				return ""
 			
 			self.code+='\n'
 			
@@ -214,7 +234,7 @@ class FunctionLowerer(CodeLowerer):
 				self.generate_while(node)
 			else:
 				throw(f"(fatal) UTSC 305: Unimplemented or Invalid AST Node '{key}'")
-				return
+				return ""
 			
 			self.code+='\n'
 

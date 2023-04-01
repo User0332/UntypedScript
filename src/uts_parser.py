@@ -52,12 +52,11 @@ class UnaryOpNode(Node):
 		return f'{{"Unary Operation {self.op}" : {self.node} }}'
 
 class RefOpNode(Node):
-	def __init__(self, ident: str, idx: int):
-		self.ident = ident
-		self.idx = idx
+	def __init__(self, expr: Node):
+		self.expr = expr
 
 	def __repr__(self):
-		return f'{{ "Addr Operation ref": {{ "name": "{self.ident}", "index": {self.idx} }} }}'
+		return f'{{ "Addr Operation ref": {{ "expr": {self.expr} }} }}'
 
 class DerefOpNode(Node):
 	def __init__(self, addr_expr: Node):
@@ -156,7 +155,7 @@ class UnimplementedNode(Node):
 		return '{ "Unimplemented Node" : null }'
 
 class AnonymousFunctionNode(Node):
-	def __init__(self, params: list[str], body: dict):
+	def __init__(self, params: dict[str, str], body: dict):
 		self.params = dumps(params)
 		self.body = dumps(body)
 	
@@ -172,7 +171,7 @@ class FunctionCallNode(Node):
 		return f'{{"Function Call" : {{ "addr" : {self.addr}, "arguments" : {self.args} }} }}'
 
 class FunctionReturnStatement(Node):
-	def __init__(self, expr: dict):
+	def __init__(self, expr: Node):
 		self.expr = expr if expr else "null"
 
 	def __repr__(self):
@@ -254,6 +253,77 @@ class HeapAllocationNode(Node):
 					Token([None, f".temp{self.magic_num}", 0])
 				)
 			}
+		}}'''
+	
+class DynamicObjectNode(Node):
+	def __init__(self, props: dict[str, Node]):
+		self.props = props
+
+	def __repr__(self) -> str:
+		return f'''{{
+	"Verify-Imported": ["strcmp", "dynamic objects"],
+	"Expression": {
+			ArrayLiteralNode(
+				[
+					AnonymousFunctionNode(
+						{"this": "LET", "name": "LET"}, 
+						{
+							f"Expression{i}": loads(str(
+								ConditionalStatementNode(
+									BinOpNode(
+										FunctionCallNode(
+											VariableAccessNode(Token([None, "strcmp", 0])),
+											[VariableAccessNode(Token([None, "name", 0])), StringLiteral(prop)]
+										), "==", NumNode(0)
+									),
+									{
+										"Expression": loads(str(
+											FunctionReturnStatement(
+												BinOpNode(
+													VariableAccessNode(Token([None, "this", 0])), "+", NumNode((i*4+8))
+												)
+											)
+										))
+									},
+									{}
+								)
+							))
+							for i, prop in enumerate(self.props.keys())
+						}
+					),
+					AnonymousFunctionNode(
+						{"this": "LET", "name": "LET", "value": "LET"}, 
+						{
+							f"Expression{i}": loads(str(
+								ConditionalStatementNode(
+									BinOpNode(
+										FunctionCallNode(
+											VariableAccessNode(Token([None, "strcmp", 0])),
+											[VariableAccessNode(Token([None, "name", 0])), StringLiteral(prop)]
+										), "==", NumNode(0)
+									),
+									{
+										"Expression": loads(str(
+											AddrAssignmentNode(
+												DerefOpNode(
+													BinOpNode(
+														VariableAccessNode(Token([None, "this", 0])), "+", NumNode((i*4)+8)
+													)
+												),
+												VariableAccessNode(Token([None, "value", 0]))
+											)
+										))
+									},
+									{}
+								)
+							))
+							for i, prop in enumerate(self.props.keys())
+						}
+					),
+					*self.props.values()
+				]
+			)
+	}
 		}}'''
 #
 
@@ -492,10 +562,11 @@ class Parser:
 			if self.current.value == ',':
 				self.advance()
 				continue
-
+			
 			if self.current.value != end:
 				code = get_code(self.code, self.current.idx)
-				throw(f"UTSC 203: Expected '{end}' or ',', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+				throw(f"UTSC 203: Expected '{end}' or ',', got {fmt_type(self.current.type)}", code)
+				
 				self.advance()
 				return UnimplementedNode()
 
@@ -573,6 +644,10 @@ class Parser:
 			self.advance() # pass last square bracket
 
 			return ArrayLiteralNode(vals)
+		
+		if current.value == '{':
+			self.advance()
+			return self.obj_expr()
 
 		if current.value == '(':
 			self.advance()
@@ -655,7 +730,60 @@ class Parser:
 		self.advance()
 		return UnimplementedNode()
 
-	#Grammar Expressions
+	def obj_expr(self):
+		self.skip_newlines()
+
+		props = dict[str, Node]()
+
+		while self.current.value != '}':
+			self.skip_newlines()
+
+			if self.current.type != "IDENTIFIER":
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected identifier, got {fmt_type(self.current.type)}", code)
+
+				self.advance()
+				return UnimplementedNode()
+			
+			propname = self.current.value
+
+			self.advance()
+			self.skip_newlines()
+
+			if self.current.value != ':':
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected ':', got '{self.current.value}'", code)
+
+				self.advance()
+				return UnimplementedNode()
+			
+			self.advance()
+			self.skip_newlines()
+
+			value = self.comp_expr()
+			self.skip_newlines()
+
+			props[propname] = value
+
+			if self.current.value == ',':
+				self.advance()
+				continue
+
+			if self.current.value == '}': break
+
+			code = get_code(self.code, self.current.idx)
+
+			throw(f"UTSC 203: Expected ',' or '}}', got '{self.current.value}'", code)
+
+			self.advance()
+			return UnimplementedNode()
+		
+		self.advance()
+
+		return DynamicObjectNode(props)		
+
 	def conditional_expr(self):
 		condition = self.comp_expr()
 
@@ -716,6 +844,8 @@ class Parser:
 		else:
 			self.go_back_newlines() # we don't want to consume the expression delimeter
 			else_body = {}
+
+		self.advance()
 		
 		return ConditionalStatementNode(condition, if_body, else_body)
 
@@ -763,16 +893,23 @@ class Parser:
 		elif self.current.value == "ref":
 			self.advance()
 
-			if self.current.type != "IDENTIFIER":
+			expr = self.comp_expr()
+
+			if type(expr) not in (
+				PropertyAccessNode, 
+				ExprSubscriptNode,
+				VariableAccessNode,
+				ArrayLiteralNode,
+				DynamicObjectNode
+			):
 				code = get_code(self.code, self.current.idx)
 
-				throw(f"UTSC 203: Expected identifier after address operator 'ref', got {fmt_type(Token(self.tokens[self.idx+1]).type)} instead", code)
+				throw(f"UTSC 203: Expected identifier, property access, subscript expression, array literal, or dynamic object after address operator 'ref', got {fmt_type(self.current.type)} instead", code)
 
-			ident = self.current
+				self.advance()
+				return UnimplementedNode()
 
-			self.advance() # pass identifier
-
-			return RefOpNode(ident.value, ident.idx)
+			return RefOpNode(expr)
 
 		elif self.current.value == "deref":
 			self.advance()
@@ -1046,7 +1183,7 @@ class Parser:
 
 			return ImportNode(modnode.value, names, modnode.idx)
 
-		if self.current.type == "IF":
+		if self.current.value == "if":
 			self.advance()
 			return self.conditional_expr()
 

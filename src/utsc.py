@@ -189,7 +189,7 @@ def main():
 			f.write(dumps(parser.structs, indent=2))
 
 	if out.endswith(".uts"):
-		lowered = CodeLowerer(raw_ast, code).lower()
+		lowered = CodeLowerer(raw_ast, code, parser.structs).lower()
 		with open(out, 'w') as f:
 			f.write(
 				lowered

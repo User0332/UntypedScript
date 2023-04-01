@@ -1,0 +1,26 @@
+import { 
+	printf, 
+	strcmp, 
+	scanf, 
+	malloc 
+} from "<libc>"
+
+const main = () => {
+	const myperson = {
+		name: malloc(20),
+		age: 0,
+		sayhello: (this) => {
+			printf("Hello! My Name is %s and I am %d years old!\n", this.name, this.age)
+		}
+	}
+
+	printf("Enter a name: ")
+	scanf("%19s", myperson.name)
+
+	printf("Enter an age: ")
+	scanf("%d", ref myperson.age)
+	
+	myperson.sayhello(myperson) // you must explicitly pass the 'this' argument
+}
+
+export { main }
