@@ -1,0 +1,23 @@
+import { 
+	printf, 
+	scanf, 
+	malloc 
+} from "<libc>"
+
+struct Person { name, age, sayhello }
+
+const main = () => {
+	const struct Person myperson = [malloc(20), 0, (struct Person this) => {
+		printf("Hello! My Name is %s and I am %d years old!\n", this.name, this.age)
+	}]
+
+	printf("Enter a name: ")
+	scanf("%20s", myperson.name)
+
+	printf("Enter an age: ")
+	scanf("%d", ref myperson.age)
+	
+	myperson.sayhello(myperson)
+}
+
+export { main }

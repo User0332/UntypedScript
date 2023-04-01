@@ -70,7 +70,13 @@ const main = () => {
 export { main }
 ```
 
-In this manner, many operations with structs require implicit casts and to some extent wastage of memory. Dynamic objects (which are yet to be introduced), will not need these implicit casts, but will be much slower than structs and will also take up more memory than them (even with implicit casting), so structs are still recommended for objects that are not created arbitrarily at runtime.
+In this manner, many operations with structs require implicit casts and to some extent wastage of memory. Dynamic objects do not need these implicit casts, but are much slower than structs and will also take up more memory than them (even with struct implicit casting), so structs are still recommended for objects that are not created arbitrarily at runtime.
+
+## Structs vs. Objects
+
+At the moment (although the test conducted is very small), there seems to be a neglibile performance difference while using structs versus using objects. They average out at 25.14575ms for structs and 25.843025ms for objects. However, it is important to note that the struct average would be about one millisecond lower if there was no outlier.
+
+![Chart of Struct vs. Object Performance](struct-obj-perf.png)
 
 ## Next on the list to do:
 
@@ -79,7 +85,6 @@ In this manner, many operations with structs require implicit casts and to some 
 - Solve recursion errors in parser
 - Remove weird parser bugs that result in a lot of errors
 - Floats
-- Add structs back into program when lowering code
 - Add asm optimizations (in progress, constant task)
 - Elif Blocks (not else-ifs)
 - For loops
@@ -94,8 +99,7 @@ In this manner, many operations with structs require implicit casts and to some 
 - Maybe objects?
 	- Both Structs (implemented like in C) and Dynamic Objects (which are much slower but can be created arbitrarily at runtime)
 		- Export structs via parser's `struct_expr()` function and `export struct <name>` statement
-	- Object creation syntax
-	- Object utils/dynamic objects
+	- Object utils
 	- Object integration with C structs
 	- Object destructuring
 - Type hinting for optimization
