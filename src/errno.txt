@@ -31,5 +31,7 @@ Compiler (3XX)
 9 Multiple symbol definition
 10 Cannot account for multiple symbol definitions
 11 Special or exceptional error/warning
+12 Tried to import a namespace from a non-UntypedScript file
+13 Cannot assign to expression
 
 Other Modules (4XX)

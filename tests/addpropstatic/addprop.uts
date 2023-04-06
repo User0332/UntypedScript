@@ -1,0 +1,20 @@
+import { printf, strcmp, malloc } from "<libc>"
+import namespace { Object } from "utils/obj"
+
+const main = () => {
+	let person = {
+		name: "Jack"
+	}
+
+	person.age = 25
+
+	printf("name = %s\n", person.name)
+	printf("props[1] = %s\n", Object.Properties(person)[1])
+	printf("age = %d\n", person.age)
+
+	Object.DeAllocate(person) 
+
+	return 0
+}
+
+export { main }

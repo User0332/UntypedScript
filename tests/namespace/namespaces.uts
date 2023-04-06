@@ -1,0 +1,15 @@
+import { printf } from "<libc>"
+
+namespace MyNamespace {
+	namespace NetstedNamespace {
+		const MY_NUM = 0
+	}
+
+	const helloworld = () => {
+		printf("Hello, World!\n")
+	}
+}
+
+export namespace {
+	MyNamespace
+}

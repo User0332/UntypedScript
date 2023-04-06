@@ -149,7 +149,7 @@ class ArgParser(ArgumentParser):
 
 class SymbolTable:
 	def __init__(self, code, parent=None):
-		self.symbols = {}
+		self.symbols: dict[str] = {}
 		self.parent: SymbolTable = parent
 		self.code = code
 

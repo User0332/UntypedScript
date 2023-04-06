@@ -32,6 +32,7 @@ class Compiler:
 		self.exports: list[str] = []
 		self.imports: list[str] = []
 		self.imported_names: list[str] = []
+		self.in_namespace: list[str] = []
 
 		# add more options - i.e. architecture from cmd line args
 		self.platform = "win32" if sys_platform == "win32" else "elf32"
@@ -58,14 +59,14 @@ class Compiler:
 	#The two methods below allocate memory for the
 	#variable and place it in a symbol table
 	def declare_variable(self, node: dict):
-		name: str = node["name"]
+		name: str = '.'.join(self.in_namespace+[node["name"]])
 		_type: str = node["type"]
 
 		self.bssinstr(f"_{name} resb 4")
 		self.symbols.declare(name, _type, 4, f"_{name}")
 
 	def define_variable(self, node: dict):
-		name: str = node["name"]
+		name: str = '.'.join(self.in_namespace+[node["name"]])
 		_type: str = node["type"]
 		value: dict = node["value"]
 		index: int = node["index"]
@@ -97,8 +98,17 @@ class Compiler:
 				code = get_code(self.source, index)
 				throw("UTSC 303: Only constant numerical/function/string values allowed in global scope", code)
 
-			self.datainstr(f"_{name} db {value}")
+			self.datainstr(f"_{name} dd {value}")
 	#
+
+	def make_namespace(self, node: dict):
+		name: str = node["name"]
+		code: dict = node["body"]
+
+		self.in_namespace+=name.split('.') # step in
+		self.traverse(code)
+
+		for _ in range(len(name.split('.'))): self.in_namespace.pop(-1) # step out
 
 	def import_names(self, node: dict):
 		names: list[str] = node["names"]
@@ -182,10 +192,104 @@ class Compiler:
 			if basename(linked_with).removesuffix(".o") in do_not_add_to_link_with:
 				self.link_with.remove(linked_with)
 
+	def import_ns(self, node: dict ):
+		ns_names: list[str] = node["names"]
+		module: module = node["module"]
+		idx: int = node["index"]
+
+		do_not_add_to_link_with: list[str] = []
+
+		uts_mod = f"{self.file_path}/{module}.uts"
+		sym_exp_mod = f"{module}.exports"
+		lib_uts_mod = f"{self.compiler_path}/lib/{module}.uts"
+		lib_sym_exp_mod = f"{self.compiler_path}/lib/{module}.exports"
+		lib_obj_mod = normpath(f"{self.compiler_path}/lib/{module}.o")
+		obj_mod = normpath(f"{self.file_path}/{module}.o")
+
+		for ns in ns_names:
+			if (not isfile(uts_mod) and isfile(lib_uts_mod)):
+				uts_mod = lib_uts_mod
+				sym_exp_mod = lib_sym_exp_mod
+				obj_mod = lib_obj_mod
+
+			if sys_platform == "win32":
+				shell = ["powershell"]
+			else:
+				shell = ["bash", "-c"]
+
+			if not (isfile(uts_mod)):
+				print(uts_mod)
+				code = get_code(self.source, idx)
+				throw("UTSC 312: Cannot import namespace from a non-UntypedScript file (you can only import namespaces from .uts files).", code)
+				return
+			try:
+				subproc_call([*shell, "utsc", "-o", sym_exp_mod, uts_mod, f"-O{self.optimize}"])
+				
+				try:
+					with open(sym_exp_mod, 'r') as f:
+						exports = f.read().splitlines()
+
+					with open(sym_exp_mod+".modules", 'r') as f:
+						imports = f.read().splitlines()
+				except FileNotFoundError:
+					raise ZeroDivisionError() # some random error to catch
+				
+				names: list[str] = []
+
+				for name in exports:
+					if name in self.symbols.symbols:
+						throw(f"UTSC 309: Name '{name}' was defined twice while trying to import from '{module}'")
+
+					if name.startswith(f"{ns}."): names.append(name)
+
+				for module in imports:
+					if module in self.imports:
+						do_not_add_to_link_with.append(module)
+			except ZeroDivisionError:
+				warn(f"UTSC 310: Could not check for symbol clashes while importing '{module}'")
+			except OSError:
+				throw(f"UTSC 301: Module '{module}' could not be compiled - utsc is not in PATH.")
+				return
+			
+			try:
+				os_remove(sym_exp_mod)
+				os_remove(sym_exp_mod+".modules")
+			except FileNotFoundError: pass
+
+			subproc_call([*shell, "utsc", "-o", obj_mod, uts_mod, f"-O{self.optimize}"])
+			
+			warn(f"UTSC 310: Could not check for symbol clashes while importing '{module}'")
+
+			if not isfile(obj_mod):
+				code = get_code(self.source, node["index"])
+
+				throw(f"UTSC 311: Object file for '{module}' disappeared!", code)
+
+			self.link_with.append(obj_mod)
+
+			for name in names:
+				self.topinstr(f"extern _{name}")
+
+				self.symbols.declare(name, "CONST", 4, f"_{name}")
+
+				self.imported_names.append(name)
+
+			self.imports.append(module)
+
+			for linked_with in self.link_with:
+				if basename(linked_with).removesuffix(".o") in do_not_add_to_link_with:
+					self.link_with.remove(linked_with)
+
 	def export_names(self, node: list[str]):
 		for name in node:
 			self.topinstr(f"global _{name}")
 			self.exports.append(name)
+
+	def export_ns(self, node: list[str]):
+		for ns in node:
+			exports = [symbol for symbol in self.symbols.symbols.keys() if symbol.startswith(f"{ns}.")]
+
+			self.export_names(exports)
 
 	#Traverses the AST and passes off each node to a specialized function
 	def traverse(self, top: dict=None):
@@ -194,12 +298,21 @@ class Compiler:
 		top = top if top is not None else self.ast
 
 		for key, node in top.items():
+			if not self.in_namespace:
+				if key.startswith("Import"):
+					self.import_names(node)
+					continue
+				if key.startswith("Namespace Import"):
+					self.import_ns(node)
+					continue		
+				elif key.startswith("Export"):
+					self.export_names(node)
+					continue
+				elif key.startswith("Namespace Export"):
+					self.export_ns(node)
+					continue
 			if key.startswith("Expression"):
 				self.traverse(node)
-			elif key.startswith("Import"):
-				self.import_names(node)
-			elif key.startswith("Export"):
-				self.export_names(node)
 			elif key.startswith("Variable Declaration"):
 				self.declare_variable(node)
 			elif key.startswith("Variable Definition"):
@@ -207,6 +320,8 @@ class Compiler:
 			elif key.startswith("Variable Assignment"):
 				code = get_code(self.source, node["index"])
 				throw("UTSC 304: Assignments not allowed in global scope.", code)
+			elif key.startswith("Namespace Declaration"):
+				self.make_namespace(node)
 			else:
 				throw(f"(fatal) UTSC 305: Unimplemented or Invalid AST Node '{key}' (global scope)")
 				return
@@ -242,7 +357,7 @@ class FunctionCompiler(Compiler):
 		self.text = '\n'.join(self.text.splitlines()[:-1])
 		return instr
 
-	def generate_expression(self, expr: dict, getfuncaddr: bool=False):
+	def generate_expression(self, expr: dict, getfuncaddr: bool=False, propassign: bool=False):
 		key: str; node: dict
 
 		for key, node in expr.items():
@@ -358,7 +473,7 @@ class FunctionCompiler(Compiler):
 			elif key.startswith("Array Literal"):
 				self.make_arr_literal(node)
 			elif key.startswith("Property Access"):
-				self.access_prop(node)
+				return self.access_prop(node, getfuncaddr=getfuncaddr, propassign=propassign)
 			elif key.startswith("Expression"):
 				self.generate_expression(node, getfuncaddr=getfuncaddr)
 			elif key.startswith("Exec-Expression"):
@@ -370,10 +485,34 @@ class FunctionCompiler(Compiler):
 			else:
 				throw(f"(fatal) UTSC 308: Invalid target for expression '{key}'")
 				return
+	
+	def try_ns(self, expr: dict[str, dict], name: str, ns_heirarchy: list=None):
+		ns_heirarchy = [] if ns_heirarchy is None else ns_heirarchy
 
-	def access_prop(self, node: dict):
-		expr: dict = node["expr"]
+		for key, node in expr.items():
+			if key.startswith("Property Access"):
+				ns_heirarchy.append(node["name"])
+				if not self.try_ns(node["expr"], name, ns_heirarchy): return False
+				break
+
+			if key.startswith("Variable Reference"):
+				ns_heirarchy.append(node["name"])
+				break
+
+			return False
+			
+		return '.'.join(ns_heirarchy[::-1]+[name])
+
+	def access_prop(self, node: dict, getfuncaddr: bool=False, propassign: bool=False):
+		expr: dict[str, dict] = node["expr"]
 		name: str = node["name"]
+
+		# try to see if it is a namespace:
+		qual_name = self.try_ns(expr, name)
+
+		if qual_name in self.outer.symbols.symbols.keys():
+			self.reference_var(qual_name, 0, getfuncaddr=getfuncaddr)
+			return
 
 		if expr.get("Variable Reference") is not None:
 			var = expr["Variable Reference"]
@@ -407,6 +546,23 @@ class FunctionCompiler(Compiler):
 
 		# otherwise, it is a dynamic object, manually call the get function
 
+		if propassign: # if assigning, call the set function
+			self.generate_expression({ "String Literal": name})
+			self.instr("push eax")
+			if ("Variable Reference" not in expr) and ("Property Access" not in expr) and ("Addr Operation deref" not in expr):
+				code = get_code(self.source, node["index"])
+				throw(f"UTSC 313: Cannot assign property '{name}' to the given expression", code)
+				return
+			
+			self.generate_expression(
+				{ "Addr Operation ref" : {"expr": expr } }
+			)
+			self.instr("push DWORD eax")
+			self.instr("mov eax, [eax]")
+			self.instr("call [eax+4]")
+			self.instr("add esp, 12")
+			return True	
+
 		self.generate_expression({ "String Literal": name})
 		self.instr("push eax")
 		self.generate_expression(expr)
@@ -414,7 +570,6 @@ class FunctionCompiler(Compiler):
 		self.instr("call [eax]")
 		self.instr("add esp, 8")
 		self.instr("mov eax, [eax]")
-
 
 	def make_arr_literal(self, vals: list[dict]):
 		# again, we use the constant 4 for 32-bit, but 64-bit needs 8
@@ -486,14 +641,13 @@ class FunctionCompiler(Compiler):
 	#
 
 	def assign_to_addr(self, node: dict):
-		addr = node["addr"]
-		value = node["value"]
+		addr: dict[str, dict] = node["addr"]
+		value: dict[str, dict] = node["value"]
 
 		self.generate_expression(value)
 		self.instr("push eax")
-		self.generate_expression(addr)
-		self.remove_last_instr() # we want the address, not the dereference of it
-
+		if self.generate_expression(addr, propassign=True): return # the setter has been called and completed the assignment for us
+		self.remove_last_instr()
 		self.instr(f"pop DWORD [eax]")
 
 	def assign_variable(self, node: dict):

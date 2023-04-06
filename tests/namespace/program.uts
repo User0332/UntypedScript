@@ -1,0 +1,9 @@
+import namespace { MyNamespace } from "./namespaces"
+import { printf } from "<libc>"
+
+const main = () => {
+	MyNamespace.helloworld()
+	printf("%i", MyNamespace.NetstedNamespace.MY_NUM)
+}
+
+export { main }

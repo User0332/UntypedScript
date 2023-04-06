@@ -1,5 +1,6 @@
 import sys
-import traceback # for debugging
+import traceback
+from types import FunctionType # for debugging
 
 # max limit possible without crashing compiler
 sys.setrecursionlimit(3800)
@@ -162,6 +163,14 @@ class AnonymousFunctionNode(Node):
 	def __repr__(self):
 		return f'{{"Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}  }} }}'
 
+class NamespaceDeclarationNode(Node):
+	def __init__(self, name: str, body: dict):
+		self.body = dumps(body)
+		self.name = name
+	
+	def __repr__(self):
+		return f'{{"Namespace Declaration" : {{ "body" : {self.body}, "name": "{self.name}" }} }}'
+
 class FunctionCallNode(Node):
 	def __init__(self, addr: Node, args: list[Node]):
 		self.addr = addr
@@ -172,7 +181,7 @@ class FunctionCallNode(Node):
 
 class FunctionReturnStatement(Node):
 	def __init__(self, expr: Node):
-		self.expr = expr if expr else "null"
+		self.expr = expr if expr else NumNode(0)
 
 	def __repr__(self):
 		return f'{{ "Return Statement": {self.expr} }}'
@@ -193,6 +202,22 @@ class ExportNode(Node):
 	def __repr__(self) -> str:
 		return f'{{ "Export": {self.names} }}'
 
+class NSImportNode(Node):
+	def __init__(self, modname: str, names: list[str], idx: int):
+		self.modname = dumps(modname)
+		self.names = dumps(names)
+		self.idx = idx
+
+	def __repr__(self) -> str:
+		return f'{{ "Namespace Import": {{ "module": {self.modname}, "names": {self.names}, "index": {self.idx} }} }}'
+
+class NSExportNode(Node):
+	def __init__(self, names: list[str]):
+		self.names = dumps(names)
+
+	def __repr__(self) -> str:
+		return f'{{ "Namespace Export": {self.names} }}'
+
 class ArrayLiteralNode(Node):
 	def __init__(self, vals: list[Node]):
 		self.vals = vals
@@ -201,12 +226,13 @@ class ArrayLiteralNode(Node):
 		return f'{{ "Array Literal": {self.vals} }}'
 
 class PropertyAccessNode(Node):
-	def __init__(self, expr: Node, name: str):
+	def __init__(self, expr: Node, name: str, idx: int):
 		self.expr = expr
 		self.name = name
+		self.idx = idx
 
 	def __repr__(self) -> str:
-		return f'{{ "Property Access": {{ "expr": {self.expr}, "name": "{self.name}" }} }}'
+		return f'{{ "Property Access": {{ "expr": {self.expr}, "name": "{self.name}", "index": {self.idx} }} }}'
 	
 class HeapAllocationNode(Node):
 	def __init__(self, vals: list[Node], magic_num: int):
@@ -256,44 +282,47 @@ class HeapAllocationNode(Node):
 		}}'''
 	
 class DynamicObjectNode(Node):
-	def __init__(self, props: dict[str, Node]):
+	def __init__(self, props: dict[str, Node], magic_num: int):
 		self.props = props
+		self.magic_num = magic_num
 
 	def __repr__(self) -> str:
 		return f'''{{
-	"Verify-Imported": ["strcmp", "dynamic objects"],
+	"Verify-Imported0": ["strcmp", "dynamic objects"],
+	"Verify-Imported1": ["Object.AddProperty", "dynamic objects"],
 	"Expression": {
-			ArrayLiteralNode(
-				[
-					AnonymousFunctionNode(
-						{"this": "LET", "name": "LET"}, 
-						{
-							f"Expression{i}": loads(str(
-								ConditionalStatementNode(
-									BinOpNode(
-										FunctionCallNode(
-											VariableAccessNode(Token([None, "strcmp", 0])),
-											[VariableAccessNode(Token([None, "name", 0])), StringLiteral(prop)]
-										), "==", NumNode(0)
-									),
-									{
-										"Expression": loads(str(
-											FunctionReturnStatement(
-												BinOpNode(
-													VariableAccessNode(Token([None, "this", 0])), "+", NumNode((i*4+8))
-												)
+		HeapAllocationNode(
+			[
+				AnonymousFunctionNode(
+					{"this": "LET", "name": "LET"}, 
+					{
+						f"Expression{i}": loads(str(
+							ConditionalStatementNode(
+								BinOpNode(
+									FunctionCallNode(
+										VariableAccessNode(Token([None, "strcmp", 0])),
+										[VariableAccessNode(Token([None, "name", 0])), StringLiteral(prop)]
+									), "==", NumNode(0)
+								),
+								{
+									"Expression": loads(str(
+										FunctionReturnStatement(
+											BinOpNode(
+												VariableAccessNode(Token([None, "this", 0])), "+", NumNode((i*4+12))
 											)
-										))
-									},
-									{}
-								)
-							))
-							for i, prop in enumerate(self.props.keys())
-						}
-					),
-					AnonymousFunctionNode(
-						{"this": "LET", "name": "LET", "value": "LET"}, 
-						{
+										)
+									))
+								},
+								{}
+							)
+						))
+						for i, prop in enumerate(self.props.keys())
+					}
+				),
+				AnonymousFunctionNode(
+					{"this": "LET", "name": "LET", "value": "LET"}, 
+					{
+						**{
 							f"Expression{i}": loads(str(
 								ConditionalStatementNode(
 									BinOpNode(
@@ -307,22 +336,41 @@ class DynamicObjectNode(Node):
 											AddrAssignmentNode(
 												DerefOpNode(
 													BinOpNode(
-														VariableAccessNode(Token([None, "this", 0])), "+", NumNode((i*4)+8)
+														DerefOpNode(VariableAccessNode(Token([None, "this", 0]))), "+", NumNode((i*4)+12)
 													)
 												),
 												VariableAccessNode(Token([None, "value", 0]))
 											)
+										)),
+										"Expression-Return": loads(str(
+											FunctionReturnStatement(None)
 										))
 									},
 									{}
 								)
 							))
 							for i, prop in enumerate(self.props.keys())
-						}
-					),
-					*self.props.values()
-				]
-			)
+						},
+						"Expression": loads(str(
+							AddrAssignmentNode(
+								DerefOpNode(VariableAccessNode(Token([None, "this", 0]))),
+								FunctionCallNode(
+									VariableAccessNode(Token([None, "Object.AddProperty", 0])),
+									[DerefOpNode(VariableAccessNode(Token([None, "this", 0]))), VariableAccessNode(Token([None, "name", 0])), VariableAccessNode(Token([None, "value", 0]))]
+								)
+							)
+								
+						))
+					}
+				),
+				HeapAllocationNode(
+					[StringLiteral(name) for name in self.props.keys()]+[NumNode(0)],
+					self.magic_num
+				),
+				*self.props.values()
+			],
+			self.magic_num+0.5
+		)
 	}
 		}}'''
 #
@@ -502,25 +550,53 @@ class Parser:
 			self.advance()
 			return UnimplementedNode()
 
-	def grab_import_export_names(self) -> list[str]:
+	def parse_ns_name(self) -> str:
+		name = ""
+
+		while 1:
+			if self.current.type != "IDENTIFIER":
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected identifer, got {fmt_type(self.current.type)}", code)
+				
+				self.advance()
+				return UnimplementedNode()
+			
+			name+=self.current.value
+
+			self.advance()
+
+			if self.current.value != '.':
+				break
+
+			name+='.'
+			self.advance()
+
+		return name
+
+	def grab_import_export_names(self, get_name: FunctionType=None) -> list[str]:
 		names: list[str] = []
 
 		while 1:
 			self.skip_newlines()
 
-			if self.current.type != "IDENTIFIER":
-				code = get_code(self.code, self.current.idx)
+			if not get_name:
+				if self.current.type != "IDENTIFIER":
+					code = get_code(self.code, self.current.idx)
 
-				throw(f"UTSC 203: Expected identifier, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+					throw(f"UTSC 203: Expected identifier, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 
+					self.advance()
+					return UnimplementedNode()
+				
+				names.append(self.current.value)
+				
 				self.advance()
-				return UnimplementedNode()
-			
-			names.append(self.current.value)
-			
-			self.advance()
+			else:
+				names.append(get_name())
 
 			self.skip_newlines()
+
 
 			if self.current.value == ',':
 				self.advance()
@@ -530,7 +606,7 @@ class Parser:
 				break
 
 			code = get_code(self.code, self.current.idx)
-			throw(f"UTSC 203: Expected '}}' or ',', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+			throw(f"UTSC 203: Expected '}}' or ',', got {fmt_type(Token(self.tokens[self.idx-1]).type)}", code)
 			
 			self.advance()
 			return UnimplementedNode()
@@ -722,7 +798,10 @@ class Parser:
 
 			else:
 				return self.fallback_paren_expr(self.current.idx)
-
+		if current.type == "NEWLINE":
+			self.advance()
+			return None
+		
 		code = get_code(self.code, current.idx)
 		
 		throw(f"UTSC 203: Expected int, float, identifier, '+', '-', or '(', got {fmt_type(current.type)}", code)
@@ -782,7 +861,9 @@ class Parser:
 		
 		self.advance()
 
-		return DynamicObjectNode(props)		
+		self.magic_num+=1
+
+		return DynamicObjectNode(props, self.magic_num)		
 
 	def conditional_expr(self):
 		condition = self.comp_expr()
@@ -946,7 +1027,7 @@ class Parser:
 			start = self.current.idx
 
 			if self.current.value == '.':
-				node = PropertyAccessNode(expr, "")
+				node = PropertyAccessNode(expr, "", self.current.idx)
 			elif self.current.value == '[':
 				node = ExprSubscriptNode(expr, {})
 			else:
@@ -957,7 +1038,7 @@ class Parser:
 
 				if self.current.idx != start: # if this is not the first go-round
 					if op == '.':
-						node = PropertyAccessNode(node, "")
+						node = PropertyAccessNode(node, "", self.current.idx)
 					elif op == '[':
 						node = ExprSubscriptNode(node, {})
 					else:
@@ -1123,6 +1204,24 @@ class Parser:
 		if self.current.type == "EXPORT" and not self.in_func:
 			self.advance()
 
+			if self.current.type == "NAMESPACE":
+				self.advance()
+
+				if self.current.value != '{':
+					code = get_code(self.code, self.current.idx)
+
+					throw(f"UTSC 203: Expected '}}', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+					
+					self.advance()
+					return UnimplementedNode()
+
+				self.advance()
+
+				names = self.grab_import_export_names(get_name=self.parse_ns_name)
+				
+				return NSExportNode(names)
+				
+
 			if self.current.value != '{':
 				code = get_code(self.code, self.current.idx)
 
@@ -1139,6 +1238,45 @@ class Parser:
 
 		if self.current.type == "IMPORT" and not self.in_func:
 			self.advance()
+
+			if self.current.type == "NAMESPACE":
+				self.advance()
+
+				if self.current.value != '{':
+					code = get_code(self.code, self.current.idx)
+
+					throw(f"UTSC 203: Expected '}}', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+					
+					self.advance()
+					return UnimplementedNode()
+
+				self.advance()
+
+				names = self.grab_import_export_names(get_name=self.parse_ns_name)
+				
+				if self.current.type != "FROM":
+					code = get_code(self.code, self.current.idx)
+
+					throw(f"UTSC 203: Expected 'from', got {self.current.value!r}", code)
+
+					self.advance()
+					return UnimplementedNode()
+
+				self.advance()
+
+				if self.current.type != "STRING":
+					code = get_code(self.code, self.current.idx)
+
+					throw(f"UTSC 203: Expected module name, got {self.current.value!r}", code)
+					
+					self.advance()
+					return UnimplementedNode()
+
+				modnode = self.current
+
+				self.advance()
+
+				return NSImportNode(modnode.value, names, modnode.idx)
 
 			names: list[str] = []
 			
@@ -1182,6 +1320,27 @@ class Parser:
 			self.advance()
 
 			return ImportNode(modnode.value, names, modnode.idx)
+		
+		if self.current.type == "NAMESPACE":
+			self.advance()
+
+			name = self.parse_ns_name()
+
+			self.skip_newlines()
+
+			if self.current.value != '{':
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected opening brace, got {self.current.value!r}", code)
+				
+				self.advance()
+				return UnimplementedNode()
+			
+			self.advance()
+
+			body = self.get_body()
+
+			return NamespaceDeclarationNode(name, body)
 
 		if self.current.value == "if":
 			self.advance()

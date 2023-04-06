@@ -1,0 +1,33 @@
+import { 
+	printf, 
+	strcmp, 
+	scanf, 
+	malloc,
+	free
+} from "<libc>"
+
+import namespace { Object } from "utils/obj"
+
+const main = () => {
+	const myperson = {
+		sayhello: (this) => {
+			printf("Hello! My Name is %s and I am %d years old!\n", this.name, this.age)
+		}
+	}
+
+	myperson.name = malloc(20)
+	myperson.age = 0
+
+	printf("Enter a name: ")
+	scanf("%20s", myperson.name)
+
+	printf("Enter an age: ")
+	scanf("%d", ref myperson.age)
+	
+	myperson.sayhello(myperson) // you must explicitly pass the 'this' argument
+
+	free(myperson.name)
+	Object.DeAllocate(myperson)
+}
+
+export { main }

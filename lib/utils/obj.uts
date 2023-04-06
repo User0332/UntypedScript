@@ -1,0 +1,68 @@
+import { malloc, realloc, strcmp, free, printf } from "<libc>"
+
+namespace Object
+{
+	const AddProperty = (obj, name, value) => {
+		obj[0] = (this, name) => {
+			const props = this[2]
+			let i = 0
+
+			while (props[i] != 0)
+			{
+				if (strcmp(props[i], name) == 0)
+				{
+					return this+((i+3)*4)
+				}
+				i+=1
+			}
+
+		}
+
+		obj[1] = (this, name, value) => {
+			const props = (deref (this))[2]
+			let i = 0
+
+			while (props[i] != 0)
+			{
+				if (strcmp(props[i], name) == 0)
+				{
+					(deref (this))[i+3] = value
+					return
+				}
+				i+=1
+			}
+
+			deref (this) = Object.AddProperty(deref (this), name, value)
+		}
+
+		let alreadyprops = obj[2]
+		let len = 0
+
+		while (alreadyprops[len] != 0) { len+=1 }
+
+		alreadyprops = realloc(alreadyprops, (len+2)*4)
+
+		if alreadyprops == 0 { return 0 } // invalid ptr/object, propadd failed
+
+		alreadyprops[len] = name
+		alreadyprops[len+1] = 0
+
+		obj[2] = alreadyprops // in case the ptr changed for some reason
+		
+		obj = realloc(obj, (len+4)*4)
+		obj[len+3] = value
+
+		return obj // in case ptr changed
+	}
+
+	const DeAllocate = (obj) => {
+		free(obj[2])
+		free(obj)
+	}
+
+	const Properties = (obj) => {
+		return obj[2]
+	}
+}
+
+export namespace { Object }
