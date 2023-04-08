@@ -35,14 +35,9 @@ namespace Object
 			deref (this) = Object.AddProperty(deref (this), name, value)
 		}
 
-		let alreadyprops = obj[2]
-		let len = 0
-
-		while (alreadyprops[len] != 0) { len+=1 }
-
 		alreadyprops = realloc(alreadyprops, (len+2)*4)
 
-		if alreadyprops == 0 { return 0 } // invalid ptr/object, propadd failed
+		if (alreadyprops == 0) { return 0 } // invalid ptr/object, propadd failed
 
 		alreadyprops[len] = name
 		alreadyprops[len+1] = 0
@@ -55,9 +50,49 @@ namespace Object
 		return obj // in case ptr changed
 	}
 
+	const AddPropertySafe = (obj, name, value) => {
+		if (Object.HasProperty(obj, name)) return obj
+
+		return Object.AddProperty(obj, name, value)
+	}
+
 	const DeAllocate = (obj) => {
 		free(obj[2])
 		free(obj)
+	}
+
+	const GetProperty = (obj, name) => {
+		return obj[0](name)
+	}
+
+	const SetProperty = (obj, name, value) => {
+		if (Object.HasProperty(obj, name))
+			return obj[1](name, value)
+	}
+
+	const SetOrAddProperty = (obj, name, value) => {
+		return obj[1](name, value)
+	}
+
+	const GetPropertySafe = (obj, name, onsuccess, onfail) => {
+		if (Object.HasProperty(obj, name))
+		{
+			return onsuccess(obj, Object.GetProperty(obj, name))
+		}
+
+		return onfail(obj)
+	}
+
+	const HasProperty = (obj, name) => {
+		let i = 0
+		const props = obj[2]
+
+		while (props[i] != 0)
+		{
+			if (strcmp(props[i], name) == 0) { return 1 }
+		}
+
+		return 0
 	}
 
 	const Properties = (obj) => {

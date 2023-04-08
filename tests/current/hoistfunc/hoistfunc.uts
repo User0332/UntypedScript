@@ -1,1 +1,11 @@
 import { puts } from "<libc>"
+
+const main = () => {
+	func()
+}
+
+const func = () => {
+	puts("Hello, World!")
+}
+
+export { main }

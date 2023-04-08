@@ -1,6 +1,6 @@
 import { rand, div } from "<libc>"
 
-const randint = (min, max) => {
+const randint = (start, stop) => {
 	return (rand() % ((stop+1)-start))+start
 }
 
