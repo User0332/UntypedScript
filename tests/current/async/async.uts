@@ -13,10 +13,10 @@ const main = () => {
 		printf("Hello, World (object api async)!\n")
 		callbackobj.callback()
 	})
-
-	executor.AddCallback(executor, () => {
+	
+	executor.AddCallback(() => {
 		printf("The second operation is complete!\n")
-	})
+	}, executor).Start()
 
 	printf("Hello, World (sync)!\n")
 	sleep(1)

@@ -20,7 +20,7 @@ const main = () => {
 	printf("Enter an age: ")
 	scanf("%d", ref myperson.age)
 	
-	myperson.sayhello(myperson) // you must explicitly pass the 'this' argument
+	myperson.sayhello()
 }
 
 export { main }

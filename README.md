@@ -95,6 +95,8 @@ At the moment (although the test conducted is very small), there seems to be a n
 - Inline asm
 - Try-catch blocks
 - Allow for stdcall functions
+- Expand async library
+- Add `stackalloc (int)` and `stackalloc[int]`
 - DLL integration
 	- Imports
 	- Exports

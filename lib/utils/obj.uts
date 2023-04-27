@@ -76,19 +76,27 @@ namespace Object
 	const DeAllocate = (obj) => {
 		free(obj[2])
 		free(obj)
+
+		return 0
 	}
 
 	const GetProperty = (obj, name) => {
-		return obj[0](name)
+		return deref (obj[0](obj, name))
 	}
 
 	const SetProperty = (obj, name, value) => {
 		if (Object.HasProperty(obj, name))
-			return obj[1](name, value)
+			return obj[1](obj, name, value)
 	}
 
-	const SetOrAddProperty = (obj, name, value) => {
-		return obj[1](name, value)
+	const SetPropertySafe = (obj, name, value, onsuccess, onfail) => {
+		if (Object.HasProperty(obj, name))
+		{
+			obj[1](obj, name, value)
+			return onsuccess(obj)
+		}
+
+		return onfail(obj)
 	}
 
 	const GetPropertySafe = (obj, name, onsuccess, onfail) => {

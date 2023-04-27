@@ -566,9 +566,9 @@ class FunctionCompiler(Compiler):
 			self.instr("mov eax, [eax]")
 			self.instr("call [eax+4]")
 			self.instr("add esp, 12")
-			return True	
+			return True
 
-		self.generate_expression({ "String Literal": name})
+		self.generate_expression({ "String Literal": name })
 		self.instr("push eax")
 		self.generate_expression(expr)
 		self.instr("push eax")
