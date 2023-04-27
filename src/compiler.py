@@ -155,9 +155,11 @@ class Compiler:
 					if module in self.imports:
 						do_not_add_to_link_with.append(module)
 			except ZeroDivisionError:
-				warn(f"UTSC 310: Could not check for symbol clashes while importing '{module}'")
+				throw(f"UTSC 302: An error occurred while importing '{module}'")
+				return
 			except OSError:
 				throw(f"UTSC 301: Module '{module}' could not be compiled - utsc is not in PATH.")
+				return
 
 			try:
 				os_remove(sym_exp_mod)
@@ -177,7 +179,7 @@ class Compiler:
 		elif module != "<libc>": # if module doesn't exist...
 			code = get_code(self.source, node["index"])
 
-			throw(f"UTSC 302: Module '{module}' doesn't exist!", code)
+			throw(f"UTSC 301: Module '{module}' doesn't exist!", code)
 
 		for name in names:
 			self.topinstr(f"extern _{name}")
@@ -246,7 +248,8 @@ class Compiler:
 					if module in self.imports:
 						do_not_add_to_link_with.append(module)
 			except ZeroDivisionError:
-				warn(f"UTSC 310: Could not check for symbol clashes while importing '{module}'")
+				throw(f"UTSC 302: An error occurred while importing '{module}'")
+				return
 			except OSError:
 				throw(f"UTSC 301: Module '{module}' could not be compiled - utsc is not in PATH.")
 				return
@@ -382,8 +385,10 @@ class FunctionCompiler(Compiler):
 					self.instr("mov eax, ebx")
 					self.instr("pop ebx")
 					self.instr("xor edx, edx")
+					self.instr("push edx") # save edx
 					self.instr("idiv ebx")
 					self.instr("mov eax, edx")
+					self.instr("pop edx")
 				else:
 					if op == '+': #addition
 						self.instr("add ebx, eax")

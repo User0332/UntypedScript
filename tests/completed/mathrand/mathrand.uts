@@ -1,0 +1,10 @@
+import { printf } from "<libc>"
+import namespace { Math } from "utils/math"
+
+const main = () => {
+	printf("randint(1, 10) = %i\n", Math.Random.Int(1, 10))
+	printf("randint(10, 20) = %i\n", Math.Random.Int(10, 20))
+	
+}
+
+export { main }

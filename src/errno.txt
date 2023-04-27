@@ -21,7 +21,7 @@ Parser (2XX)
 
 Compiler (3XX)
 1 File not found
-2 Module doesn't exist
+2 Module couldn't be compiled
 3 Invalid global-scope variable value
 4 Reassignment in global scope
 5 Malformed/Unimplemented AST Node encountered

@@ -1,0 +1,25 @@
+import { printf, sleep } from "<libc>"
+import namespace { Async } from "utils/win32/async"
+
+const main = () => {
+	Async.Execute_AcceptsCallback((callback) => {
+		printf("Hello, World (async)!\n")
+		callback()
+	}, () => {
+		printf("The operation is complete!\n")
+	})
+
+	const executor = Async.ObjectAPI.CreateExecutor((callbackobj) => {
+		printf("Hello, World (object api async)!\n")
+		callbackobj.callback()
+	})
+
+	executor.AddCallback(executor, () => {
+		printf("The second operation is complete!\n")
+	})
+
+	printf("Hello, World (sync)!\n")
+	sleep(1)
+}
+
+export { main }

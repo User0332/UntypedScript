@@ -1,0 +1,33 @@
+import namespace { Object } from "utils/obj"
+import { _beginthread, strcmp, malloc } from "<libc>"
+
+namespace Async
+{
+	const WaitForCallback = (this) => {
+		while (this.callback == Async.WaitForCallback) {}
+
+		return this.callback()
+	}
+
+	const Execute_AcceptsCallback = (func_that_accepts_callback, callback) => {
+		_beginthread(func_that_accepts_callback, 0, callback)
+	}
+
+	namespace ObjectAPI
+	{
+		const CreateExecutor = (func_that_accepts_callback_obj) => {
+			const obj = {
+				callback: Async.WaitForCallback,
+				AddCallback: (this, callback) => {
+					this.callback = callback
+				}
+			}
+
+			_beginthread(func_that_accepts_callback_obj, 0, obj)
+
+			return obj
+		}
+	}
+}
+
+export namespace { Async }
