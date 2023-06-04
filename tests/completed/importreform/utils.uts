@@ -1,0 +1,6 @@
+import { puts } from "<libc>"
+import namespace { Library } from "library"
+
+const phello = () => puts(Library.hello())
+
+export { phello }

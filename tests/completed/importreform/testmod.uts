@@ -1,0 +1,14 @@
+import { puts } from "<libc>"
+import namespace { Library } from "library"
+import { phello } from "utils"
+
+const main = () => {
+    puts(Library.hello())
+    phello()
+
+    return 0
+}
+
+export {
+    main
+}

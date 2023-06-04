@@ -21,7 +21,7 @@ from utils import (
 
 # OTHER UTILITY MODULES
 from json import (
-	dumps
+	dumps, dump
 )
 
 
@@ -34,7 +34,8 @@ from os import (
 	getcwd, 
 	listdir,
 	chdir,
-	remove as os_remove
+	remove as os_remove,
+	rename as os_rename
 )
 
 from os.path import (
@@ -64,13 +65,12 @@ def main():
 	argparser.add_argument("filename", nargs='?', default='', type=str, help='Source file')
 	argparser.add_argument("-f", "--fmt", type=str, default="win32", help="format to compile to")
 	argparser.add_argument("-O", "--optimization", type=int, default=0, help="Optimization level to apply. Can be 0 (default), 1, or 2")
+	argparser.add_argument("-m", "--module", action="store_true", help="Compile this file without linking object files")
 	outgroup = argparser.add_mutually_exclusive_group()
 	outgroup.add_argument("-o", "--out", type=str, help="output filename")
 	outgroup.add_argument("-e", "--executable", help="run assemble.ps1 and produce an executable using NASM and MinGW", action="store_true")
 	outgroup.add_argument("-r", "--run", help="Run the uts program and exit", action="store_true")
 	
-	
-
 	args = argparser.parse_args()
 	
 	warnings = not args.suppresswarnings
@@ -78,6 +78,7 @@ def main():
 	runfile = args.run
 	compile_optimizations = args.optimization
 	fmt = args.fmt
+	modularize  = args.module
 	
 	try:
 		show = args.dump.lower()
@@ -117,7 +118,7 @@ def main():
 	if args.out == None:
 		out = basesource+".o"
 		if not (executable or runfile): warn("UTSC 004: -o option unspecified, assuming object file", f">{out}\n")
-	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll", ".exports", ".structs", ".uts")) and args.out != 'NULL':
+	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll", ".modinfo", ".structs", ".uts")) and args.out != 'NULL':
 		warn(f"UTSC 004: '{args.out}' is an invalid output file. Switching to object file by default.")
 		out = basesource+".o"
 	else:
@@ -184,10 +185,6 @@ def main():
 		with open(out, 'w') as f:
 			f.write(ast)
 
-	if out.endswith(".structs"):
-		with open(out, 'w') as f:
-			f.write(dumps(parser.structs, indent=2))
-
 	if out.endswith(".uts"):
 		lowered = CodeLowerer(raw_ast, code, parser.structs).lower()
 		with open(out, 'w') as f:
@@ -199,11 +196,12 @@ def main():
 	if warnings: printwarnings()
 	checkfailure()
 
-	compiler = Compiler(raw_ast, code, COMPILER_EXE_PATH, INPUT_FILE_PATH, compile_optimizations, parser.structs)
+	compiler = Compiler(raw_ast, code, COMPILER_EXE_PATH, INPUT_FILE_PATH, file, compile_optimizations, parser.structs)
 	asm = compiler.traverse()
 
-	for dependency in compiler.link_with:
-		print(f"Link dependency (for '{basename(file)}') - {dependency!r}")
+	if (not modularize) and (not out.endswith(".modinfo")):
+		for dependency in compiler.link_with:
+			print(f"Link dependency (for '{basename(file)}') - {dependency!r}")
 
 	if compile_optimizations >= 2:
 		optimizer = AssemblyOptimizer(asm)
@@ -213,12 +211,13 @@ def main():
 	if warnings: printwarnings()
 	checkfailure()
 
-	if out.endswith(".exports"):
+	if out.endswith(".modinfo"):
 		with open(out, 'w') as f:
-			f.write('\n'.join(compiler.exports))
+			dump(compiler.gen_modinfo(), f)
 
-		with open(out+".modules", 'w') as f:
-			f.write('\n'.join(compiler.imports))
+	if out.endswith(".structs"):
+		with open(out, 'w') as f:
+			dump(compiler.structs, f)
 
 	if show in ("dis", "disassemble", "disassembly", "asm", "assembly", "all"):
 		print("Disassembly:\n")
@@ -235,26 +234,36 @@ def main():
 		tempname = f"{objname}.temp"
 
 		try:
-			subprocess_call(
-				[
-					config["nasmPath"], 
-					asmname, 
-					"-f", fmt, 
-					"-o", tempname
-				]
-			)
+			if not modularize:
+				subprocess_call(
+					[
+						config["nasmPath"], 
+						asmname, 
+						"-f", fmt, 
+						"-o", tempname
+					]
+				)
 
-			subprocess_call(
-				[
-					config["ldPath"],
-					tempname,
-					*compiler.link_with,
-					'-relocatable',
-					'-o', objname
-				]
-			)
+				subprocess_call(
+					[
+						config["ldPath"],
+						tempname,
+						*compiler.link_with,
+						'-relocatable',
+						'-o', objname
+					]
+				)
+				os_remove(tempname)
+			else:
+				subprocess_call(
+					[
+						config["nasmPath"], 
+						asmname, 
+						"-f", fmt, 
+						"-o", objname
+					]
+				)
 
-			os_remove(tempname)
 		except OSError as e:
 			throw(f"UTSC 003: An error occurred while trying to compile '{out}' - python: {e}")
 

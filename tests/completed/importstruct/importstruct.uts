@@ -1,0 +1,11 @@
+import { printf } from "<libc>"
+import { Person } from "person"
+
+const main = () => {
+    const struct Person person = ["Bob", 20]
+
+    printf("name = \"%s\"\n", person.name)
+    printf("age = %i\n", person.age)
+}
+
+export { main }

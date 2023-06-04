@@ -2,5 +2,5 @@
 
 Exports:
 ```ts
-(constant) NORMAL_ARRAY_BYTE_OFFSET
+(const) NORMAL_ARRAY_BYTE_OFFSET
 ```

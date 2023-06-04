@@ -10,7 +10,7 @@
 #in a loop where the variable is never used.
 #instead, ecx could just be used as the counter.
 
-from re import finditer as re_finditer
+from re import match as re_match
 
 class AssemblyOptimizer:
 	def __init__(self, asm: str):
@@ -27,28 +27,36 @@ class AssemblyOptimizer:
 			"rdi", "edi",  "di", "dil"
 		)
 
-
 	def optimize(self):
 		mov_into_eax = False
 		mov_into_eax_val = None
 
 		for i, line in enumerate(self.asm.splitlines()):
 			line = line.strip()
-				
+
+			match = re_match("mov (.*), 0", line)
+
+			try:
+				reg = match.group(1)
+
+				if reg in self.VALID_REGISTERS:
+					self.optimized+=f"xor {reg}, {reg}\n"
+					continue
+			except AttributeError: pass
+
 			if mov_into_eax:
-				movinstr = re_finditer("mov (\[.*\]), eax", line)
+				movinstr = re_match("mov (\[.*\]), eax", line)
 				try:
-					movinstr = next(movinstr)
 					# here we use DWORD, but in the future, when the 64-bit compiler option is introduced, this needs to be dependent 
 					# on that option rather than just DWORD (e.g. it could be QWORD with 64-bit types)
 					dest = movinstr.group(1)
 					
 					if ('[' in dest) and ('[' in mov_into_eax_val):
-						raise StopIteration() # nasm will not accept two dereferenced addresses like this
+						raise AttributeError() # nasm will not accept two dereferenced addresses like this
 					
 					self.optimized+=f"mov DWORD {dest}, {mov_into_eax_val}\n"
 					mov_into_eax = False
-				except StopIteration:
+				except AttributeError:
 					if line == "push eax":
 						self.optimized+=f"push DWORD {mov_into_eax_val}\n"
 						mov_into_eax = False
@@ -62,15 +70,6 @@ class AssemblyOptimizer:
 				mov_into_eax = True
 				mov_into_eax_val = line.removeprefix("mov eax, ")
 				continue
-
-			match = re_finditer("mov (.*), 0", line)
-			try:
-				reg = next(match).group(1)
-
-				if reg in self.VALID_REGISTERS:
-					self.optimized+=f"xor {reg}, {reg}\n"
-					continue
-			except StopIteration: pass
 
 			self.optimized+=line+"\n"
 

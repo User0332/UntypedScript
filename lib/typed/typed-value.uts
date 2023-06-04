@@ -1,0 +1,18 @@
+struct TypedValue
+{
+	value, type
+}
+
+namespace Types
+{
+	const INT = 0
+	const STRING = 1
+	const FLOAT = 2
+	const ARR = 3
+	const PTR = 4
+	const BOOL = 5
+	const OBJECT = 6
+}
+
+
+export namespace { Types }

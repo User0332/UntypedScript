@@ -88,6 +88,9 @@ At the moment (although the test conducted is very small), there seems to be a n
 	- Literals
 	- Arithmetic (maybe thru functions because the language is untyped)
 - Add asm optimizations (in progress, constant task)
+- Language information (constantly in progress)
+	- Language Specification/Standard
+	- Docs
 - Elif Blocks (not else-ifs)
 - For loops
 - 64-bit programs and types
@@ -101,9 +104,7 @@ At the moment (although the test conducted is very small), there seems to be a n
 	- Imports
 	- Exports
 	- Fix DLL Compilation
-- Maybe objects?
-	- Both Structs (implemented like in C) and Dynamic Objects (which are much slower but can be created arbitrarily at runtime)
-		- Export structs via parser's `struct_expr()` function and `export struct <name>` statement
+- Dynamic Objects
 	- Object integration with C structs
 	- Object destructuring
 - Type hinting for optimization

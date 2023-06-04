@@ -1,0 +1,11 @@
+const write = (arr) => {
+	// do something here ...
+}
+
+const main = () => {
+	const arr = [10, 0]
+
+	write(arr)
+}
+
+export { main }

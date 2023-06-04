@@ -66,7 +66,6 @@ class DerefOpNode(Node):
 	def __repr__(self):
 		return f'{{ "Addr Operation deref": {self.expr} }}'
 
-
 class VariableDeclarationNode(Node):
 	def __init__(self, dtype: str, name: str):
 		self.dtype = dtype
@@ -158,6 +157,10 @@ class UnimplementedNode(Node):
 class AnonymousFunctionNode(Node):
 	def __init__(self, params: dict[str, str], body: dict):
 		self.params = dumps(params)
+		
+		if tuple(body.values())[-1].get("Return Statement") is None:
+			body["Expression_CompilerAddedDefaultReturn"] = loads(str(FunctionReturnStatement(NumNode(0))))
+
 		self.body = dumps(body)
 	
 	def __repr__(self):
@@ -217,6 +220,15 @@ class NSExportNode(Node):
 
 	def __repr__(self) -> str:
 		return f'{{ "Namespace Export": {self.names} }}'
+	
+class StructImportNode(Node):
+	def __init__(self, modname: str, names: list[str], idx: int):
+		self.modname = dumps(modname)
+		self.names = dumps(names)
+		self.idx = idx
+
+	def __repr__(self) -> str:
+		return f'{{ "Struct Import": {{ "module": {self.modname}, "names": {self.names}, "index": {self.idx} }} }}'
 
 class ArrayLiteralNode(Node):
 	def __init__(self, vals: list[Node]):
@@ -1277,6 +1289,12 @@ class Parser:
 				self.advance()
 
 				return NSImportNode(modnode.value, names, modnode.idx)
+			
+			struct = False
+
+			if self.current.type == "STRUCT":
+				struct = True
+				self.advance()
 
 			names: list[str] = []
 			
@@ -1319,6 +1337,8 @@ class Parser:
 
 			self.advance()
 
+			if struct: return StructImportNode(modnode.value, names, modnode.idx)
+			
 			return ImportNode(modnode.value, names, modnode.idx)
 		
 		if self.current.type == "NAMESPACE":

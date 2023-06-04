@@ -153,15 +153,19 @@ class SymbolTable:
 		self.parent: SymbolTable = parent
 		self.code = code
 
-	def get(self, name, index) -> dict:
+	def get(self, name, index, fallback_qual_name=None) -> dict:
 		attr = self.symbols.get(name, None)
 		if attr is None:
 			if self.parent:
-				return self.parent.get(name, index)
+				return self.parent.get(name, index, fallback_qual_name=fallback_qual_name)
 			else:
 				line, idx, linenum = strgetline(self.code, index)
 				code = formatline(line, idx, linenum)
-				throw(f"UTSC 307: Name Error: Name '{name}' not defined.", code)
+
+				err = f"UTSC 307: Name Error: Name '{name}' not defined"
+				if fallback_qual_name: err+=f" (potential undefined namespaced property being accessed -> '{fallback_qual_name}')"
+				throw(err+'.', code)
+				
 				return None
 		
 		return attr

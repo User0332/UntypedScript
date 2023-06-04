@@ -1,0 +1,18 @@
+import { printf, strcmp, malloc } from "<libc>"
+import struct { TypedValue } from "typed/typed-value"
+import namespace { Object } from "utils/obj"
+import namespace { Types } from "typed/typed-value"
+import namespace { Console } from "typed/io"
+
+const main = () => {
+	const typedobj = [
+		{
+			name: ["Carl", Types.STRING]
+		}, 
+		Types.OBJECT
+	]
+
+	Console.WriteLine(typedobj)
+}
+
+export { main }

@@ -1,0 +1,8 @@
+namespace Library {
+    const hello = () => "hello"
+}
+
+const phello = 6
+
+export { phello } // this should throw error for multiple symbol def
+export namespace { Library }

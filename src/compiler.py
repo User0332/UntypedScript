@@ -13,8 +13,12 @@ from os.path import isfile, normpath, dirname, basename
 from sys import platform as sys_platform
 from subprocess import call as subproc_call
 
+from json import load
+
+from typing import Union
+
 class Compiler:
-	def __init__(self, ast: dict, code: str, compiler_path: str, file_path: str, optimize: int, structs: dict):
+	def __init__(self, ast: dict, code: str, compiler_path: str, file_path: str, filename: str, optimize: int, structs: dict):
 		self.ast = ast
 		self.top = ""
 		self.text = "section .text"
@@ -30,9 +34,10 @@ class Compiler:
 		self.file_path = file_path
 		self.link_with: list[str] = []
 		self.exports: list[str] = []
-		self.imports: list[str] = []
-		self.imported_names: list[str] = []
+		self.imported_modinfo: dict[str, dict[str, Union[list[str], dict]]] = {}
+		self.names_from: dict[str, str] = {}
 		self.in_namespace: list[str] = []
+		self.imported_names: list[str] = [] # for checking for imports for special features
 
 		# add more options - i.e. architecture from cmd line args
 		self.platform = "win32" if sys_platform == "win32" else "elf32"
@@ -101,6 +106,33 @@ class Compiler:
 			self.datainstr(f"_{name} dd {value}")
 	#
 
+	def gen_modinfo(self):
+		modinfo: dict[str, Union[list[str], dict]] = {}
+
+		modinfo["names"] = self.exports
+		modinfo["imported-modules"] = self.imported_modinfo
+		modinfo["names-from"] = self.names_from
+
+		return modinfo
+	
+	def findmod_modinfo(self, modname: str, modules: dict[str, dict[Union[list[str], dict]]]=None) -> bool:
+		modules = modules if modules is not None else self.imported_modinfo
+		
+		for module, info in modules.items():
+			if modname == module: return True
+
+			if self.findmod_modinfo(modname, info["imported-modules"]): return True
+
+		return False
+	
+	def filter_already_imported(self, modinfo: dict[str, Union[list[str], dict]]) -> None:
+		for modname, info in modinfo["imported-modules"].items():
+			if self.findmod_modinfo(modname): continue
+			obj_modname = '.'.join(modname.split('.')[:-1]+['o'])
+			self.link_with.append(obj_modname)
+
+			self.filter_already_imported(info)
+
 	def make_namespace(self, node: dict):
 		name: str = node["name"]
 		code: dict = node["body"]
@@ -114,19 +146,19 @@ class Compiler:
 		names: list[str] = node["names"]
 		module = node["module"]
 
-		do_not_add_to_link_with: list[str] = []
+		self.imported_names.extend(names)
 
-		uts_mod = f"{self.file_path}/{module}.uts"
-		sym_exp_mod = f"{module}.exports"
-		asm_mod = f"{self.file_path}/{module}.asm"
-		lib_uts_mod = f"{self.compiler_path}/lib/{module}.uts"
-		lib_sym_exp_mod = f"{self.compiler_path}/lib/{module}.exports"
+		uts_mod = normpath(f"{self.file_path}/{module}.uts")
+		modinfo = normpath(f"{module}.modinfo")
+		asm_mod = normpath(f"{self.file_path}/{module}.asm")
+		lib_uts_mod = normpath(f"{self.compiler_path}/lib/{module}.uts")
+		lib_modinfo = normpath(f"{self.compiler_path}/lib/{module}.modinfo")
 		lib_obj_mod = normpath(f"{self.compiler_path}/lib/{module}.o")
 		obj_mod = normpath(f"{self.file_path}/{module}.o")
 
 		if (not isfile(uts_mod) and isfile(lib_uts_mod)):
 			uts_mod = lib_uts_mod
-			sym_exp_mod = lib_sym_exp_mod
+			modinfo = lib_modinfo
 			obj_mod = lib_obj_mod
 
 		if sys_platform == "win32":
@@ -134,26 +166,36 @@ class Compiler:
 		else:
 			shell = ["bash", "-c"]
 
-		if (isfile(uts_mod)): # if a .uts file, compile it
+		if isfile(uts_mod): # if a .uts file, compile it
 			try:
-				subproc_call([*shell, "utsc", "-o", sym_exp_mod, uts_mod, f"-O{self.optimize}"])
+				subproc_call([*shell, "utsc", "-o", modinfo, uts_mod, f"-O{self.optimize}"])
 				
 				try:
-					with open(sym_exp_mod, 'r') as f:
-						exports = f.read().splitlines()
-
-					with open(sym_exp_mod+".modules", 'r') as f:
-						imports = f.read().splitlines()
+					with open(modinfo, 'r') as f:
+						modinfo_dict: dict[str, Union[list[str], dict]] = load(f)
 				except FileNotFoundError:
 					raise ZeroDivisionError() # some random error to catch
+				
+				if not self.findmod_modinfo(uts_mod):
+					self.link_with.append(obj_mod)
+					self.filter_already_imported(modinfo_dict)
 
-				for name in exports:
-					if name in self.symbols.symbols:
-						throw(f"UTSC 309: Name '{name}' was defined twice while trying to import from '{module}'")
+				self.imported_modinfo[uts_mod] = modinfo_dict
+				
+				for name in modinfo_dict["names"]:
+					if (name in self.names_from) and (self.names_from[name] != uts_mod):
+						throw(f"UTSC 309: name '{name}' is defined twice - in both {self.names_from[name]!r} and {uts_mod!r}")
+						continue
 
-				for module in imports:
-					if module in self.imports:
-						do_not_add_to_link_with.append(module)
+					self.names_from[name] = uts_mod
+
+				for name in modinfo_dict["names-from"]:
+					defined_in = modinfo_dict["names-from"][name]
+					if (name in self.names_from) and (self.names_from[name] != defined_in):
+						throw(f"UTSC 309: name '{name}' is defined twice - in both {self.names_from[name]!r} and {defined_in}")
+						continue
+
+					self.names_from[name] = defined_in
 			except ZeroDivisionError:
 				throw(f"UTSC 302: An error occurred while importing '{module}'")
 				return
@@ -162,11 +204,10 @@ class Compiler:
 				return
 
 			try:
-				os_remove(sym_exp_mod)
-				os_remove(sym_exp_mod+".modules")
+				os_remove(modinfo)
 			except FileNotFoundError: pass
 
-			subproc_call([*shell, "utsc", "-o", obj_mod, uts_mod, f"-O{self.optimize}"])
+			subproc_call([*shell, "utsc", "-o", obj_mod, uts_mod, f"-O{self.optimize}", "--module"])
 		elif module != "<libc>": warn(f"UTSC 310: Could not check for symbol clashes while importing '{module}'")
 
 		# make compiler config with NASM and GCC paths/ configured shell to use later
@@ -175,113 +216,165 @@ class Compiler:
 			except OSError:
 				throw(f"UTSC 301: Module '{module}' could not be compiled - nasm is not in PATH.")
 
-		if isfile(obj_mod): self.link_with.append(obj_mod)
+		if isfile(obj_mod):
+			if obj_mod not in self.link_with: self.link_with.append(obj_mod)
 		elif module != "<libc>": # if module doesn't exist...
 			code = get_code(self.source, node["index"])
 
 			throw(f"UTSC 301: Module '{module}' doesn't exist!", code)
 
 		for name in names:
+			if isfile(uts_mod) and name not in modinfo_dict["names"]:
+				throw(f"UTSC 307: Module '{module}' does not include name '{name}' (failed at import)")
+			
 			self.topinstr(f"extern _{name}")
-
 			self.symbols.declare(name, "CONST", 4, f"_{name}")
 
-			self.imported_names.append(name)
+		if module == "<libc>":
+			for name in names:
+				if (name in self.names_from) and (self.names_from[name] != uts_mod):
+						throw(f"UTSC 309: '{name}' is imported from '<libc>' when it has another origin from {self.names_from[name]!r}")
+						continue
+				
+				self.names_from[name] = "<libc>"
 
-		self.imports.append(module)
-
-		for linked_with in self.link_with:
-			if basename(linked_with).removesuffix(".o") in do_not_add_to_link_with:
-				self.link_with.remove(linked_with)
-
-	def import_ns(self, node: dict ):
+	def import_ns(self, node: dict):
 		ns_names: list[str] = node["names"]
 		module: module = node["module"]
 		idx: int = node["index"]
 
-		do_not_add_to_link_with: list[str] = []
-
-		uts_mod = f"{self.file_path}/{module}.uts"
-		sym_exp_mod = f"{module}.exports"
-		lib_uts_mod = f"{self.compiler_path}/lib/{module}.uts"
-		lib_sym_exp_mod = f"{self.compiler_path}/lib/{module}.exports"
+		uts_mod = normpath(f"{self.file_path}/{module}.uts")
+		modinfo = normpath(f"{module}.modinfo")
+		lib_uts_mod = normpath(f"{self.compiler_path}/lib/{module}.uts")
+		lib_modinfo = normpath(f"{self.compiler_path}/lib/{module}.modinfo")
 		lib_obj_mod = normpath(f"{self.compiler_path}/lib/{module}.o")
 		obj_mod = normpath(f"{self.file_path}/{module}.o")
 
+		if not isfile(uts_mod):
+			uts_mod = lib_uts_mod
+			modinfo = lib_modinfo
+			obj_mod = lib_obj_mod
+
+		if sys_platform == "win32":
+			shell = ["powershell"]
+		else:
+			shell = ["bash", "-c"]
+
+		if not (isfile(uts_mod)):
+			code = get_code(self.source, idx)
+			throw("UTSC 312: Cannot import namespace from a non-UntypedScript file (you can only import namespaces from .uts files).", code)
+			return
+		try:
+			subproc_call([*shell, "utsc", "-o", modinfo, uts_mod, f"-O{self.optimize}"])
+			
+			try:
+				with open(modinfo, 'r') as f:
+					modinfo_dict: dict[str, Union[list[str], dict]] = load(f)
+			except FileNotFoundError:
+				raise ZeroDivisionError() # some random error to catch
+
+			if not self.findmod_modinfo(uts_mod):
+				self.link_with.append(obj_mod)
+				self.filter_already_imported(modinfo_dict)
+
+			self.imported_modinfo[uts_mod] = modinfo_dict
+
+			for name in modinfo_dict["names"]:
+				if (name in self.names_from) and (self.names_from[name] != uts_mod):
+					throw(f"UTSC 309: name '{name}' is defined twice - in both {self.names_from[name]!r} and {uts_mod!r}")
+					continue
+
+				self.names_from[name] = uts_mod
+
+			for name in modinfo_dict["names-from"]:
+				defined_in = modinfo_dict["names-from"][name]
+				if (name in self.names_from) and (self.names_from[name] != defined_in):
+					throw(f"UTSC 309: name '{name}' is defined twice - in both {self.names_from[name]!r} and {defined_in}")
+					continue
+
+				self.names_from[name] = defined_in
+		except ZeroDivisionError:
+			throw(f"UTSC 302: An error occurred while importing '{module}'")
+			return
+		except OSError:
+			throw(f"UTSC 301: Module '{module}' could not be compiled - utsc is not in PATH.")
+			return
+					
+		try:
+			os_remove(modinfo)
+		except FileNotFoundError: pass
+
+		subproc_call([*shell, "utsc", "-o", obj_mod, uts_mod, f"-O{self.optimize}", "--module"])
+		
+		if not isfile(obj_mod):
+			code = get_code(self.source, node["index"])
+
+			throw(f"UTSC 311: Object file for '{module}' disappeared!", code)
+
+		if obj_mod not in self.link_with: self.link_with.append(obj_mod)
+
 		for ns in ns_names:
-			if (not isfile(uts_mod) and isfile(lib_uts_mod)):
-				uts_mod = lib_uts_mod
-				sym_exp_mod = lib_sym_exp_mod
-				obj_mod = lib_obj_mod
+			names: list[str] = [
+				name for name in modinfo_dict["names"] if name.startswith(f"{ns}.")
+			]
 
-			if sys_platform == "win32":
-				shell = ["powershell"]
-			else:
-				shell = ["bash", "-c"]
-
-			if not (isfile(uts_mod)):
-				print(uts_mod)
-				code = get_code(self.source, idx)
-				throw("UTSC 312: Cannot import namespace from a non-UntypedScript file (you can only import namespaces from .uts files).", code)
-				return
-			try:
-				subproc_call([*shell, "utsc", "-o", sym_exp_mod, uts_mod, f"-O{self.optimize}"])
-				
-				try:
-					with open(sym_exp_mod, 'r') as f:
-						exports = f.read().splitlines()
-
-					with open(sym_exp_mod+".modules", 'r') as f:
-						imports = f.read().splitlines()
-				except FileNotFoundError:
-					raise ZeroDivisionError() # some random error to catch
-				
-				names: list[str] = []
-
-				for name in exports:
-					if name in self.symbols.symbols:
-						throw(f"UTSC 309: Name '{name}' was defined twice while trying to import from '{module}'")
-
-					if name.startswith(f"{ns}."): names.append(name)
-
-				for module in imports:
-					if module in self.imports:
-						do_not_add_to_link_with.append(module)
-			except ZeroDivisionError:
-				throw(f"UTSC 302: An error occurred while importing '{module}'")
-				return
-			except OSError:
-				throw(f"UTSC 301: Module '{module}' could not be compiled - utsc is not in PATH.")
-				return
-			
-			try:
-				os_remove(sym_exp_mod)
-				os_remove(sym_exp_mod+".modules")
-			except FileNotFoundError: pass
-
-			subproc_call([*shell, "utsc", "-o", obj_mod, uts_mod, f"-O{self.optimize}"])
-			
-			warn(f"UTSC 310: Could not check for symbol clashes while importing '{module}'")
-
-			if not isfile(obj_mod):
-				code = get_code(self.source, node["index"])
-
-				throw(f"UTSC 311: Object file for '{module}' disappeared!", code)
-
-			self.link_with.append(obj_mod)
+			self.imported_names.extend(names)
 
 			for name in names:
 				self.topinstr(f"extern _{name}")
 
 				self.symbols.declare(name, "CONST", 4, f"_{name}")
 
-				self.imported_names.append(name)
+	def import_struct(self, node: dict):
+		struct_names: list[str] = node["names"]
+		module: module = node["module"]
+		idx: int = node["index"]
 
-			self.imports.append(module)
+		uts_mod = normpath(f"{self.file_path}/{module}.uts")
+		struct_mod = normpath(f"{self.file_path}/{module}.structs")
+		lib_uts_mod = normpath(f"{self.compiler_path}/lib/{module}.uts")
+		lib_struct_mod = normpath(f"{self.compiler_path}/lib/{module}.structs")
 
-			for linked_with in self.link_with:
-				if basename(linked_with).removesuffix(".o") in do_not_add_to_link_with:
-					self.link_with.remove(linked_with)
+
+		if not isfile(uts_mod):
+			uts_mod = lib_uts_mod
+			struct_mod = lib_struct_mod
+
+		if sys_platform == "win32":
+			shell = ["powershell"]
+		else:
+			shell = ["bash", "-c"]
+
+		if not (isfile(uts_mod)):
+			code = get_code(self.source, idx)
+			throw("UTSC 312: Cannot import struct from a non-UntypedScript file (you can only import structs from .uts files).", code)
+			return
+	
+		subproc_call([*shell, "utsc", "-o", struct_mod, uts_mod, f"-O{self.optimize}", "--module"])
+		
+		if not isfile(struct_mod):
+			code = get_code(self.source, idx)
+
+			throw(f"UTSC 311: Struct file for '{module}' disappeared!", code)
+			return
+		
+		with open(struct_mod, 'r') as f:
+			structs: dict[str, list[str]] = load(f)
+
+		for name in struct_names:
+			if name not in structs:
+				code = get_code(self.source, idx)
+
+				throw(f"UTSC 307: Struct '{name}' does not exist in '{module}'!", code)
+				continue
+
+			if name in self.structs:
+				code = get_code(self.source, idx)
+
+				throw(f"UTSC 309: Struct '{name}' (from '{module}') is already defined!", code)
+				continue
+
+			self.structs[name] = structs[name]
 
 	def export_names(self, node: list[str]):
 		for name in node:
@@ -307,11 +400,14 @@ class Compiler:
 					continue
 				if key.startswith("Namespace Import"):
 					self.import_ns(node)
-					continue		
-				elif key.startswith("Export"):
+					continue
+				if key.startswith("Struct Import"):
+					self.import_struct(node)
+					continue
+				if key.startswith("Export"):
 					self.export_names(node)
 					continue
-				elif key.startswith("Namespace Export"):
+				if key.startswith("Namespace Export"):
 					self.export_ns(node)
 					continue
 			if key.startswith("Expression"):
@@ -360,7 +456,7 @@ class FunctionCompiler(Compiler):
 		self.text = '\n'.join(self.text.splitlines()[:-1])
 		return instr
 
-	def generate_expression(self, expr: dict, getfuncaddr: bool=False, propassign: bool=False):
+	def generate_expression(self, expr: dict, getfuncaddr: bool=False, propassign: bool=False, passqual: str=None):
 		key: str; node: dict
 
 		for key, node in expr.items():
@@ -451,7 +547,7 @@ class FunctionCompiler(Compiler):
 			elif key.startswith("Numerical Constant"):
 				self.instr(f"mov eax, {node}")
 			elif key.startswith("Variable Reference"):
-				self.reference_var(node["name"], node["index"], getfuncaddr=getfuncaddr)
+				self.reference_var(node["name"], node["index"], getfuncaddr=getfuncaddr, passqual=passqual)
 			elif key.startswith("Anonymous Function"):
 				params: dict[str, str] = node["parameters"]
 				body: dict = node["body"]
@@ -522,7 +618,7 @@ class FunctionCompiler(Compiler):
 		if expr.get("Variable Reference") is not None:
 			var = expr["Variable Reference"]
 
-			try: dtype: str = self.symbols.get(var["name"], var["index"])["type"]
+			try: dtype: str = self.symbols.get(var["name"], var["index"], qual_name)["type"]
 			except TypeError: return # var was not found, thrown on utils.py side
 
 			if dtype.startswith(("CONST ", "LET ")):
@@ -560,7 +656,8 @@ class FunctionCompiler(Compiler):
 				return
 			
 			self.generate_expression(
-				{ "Addr Operation ref" : {"expr": expr } }
+				{ "Addr Operation ref" : { "expr": expr } },
+				passqual=qual_name
 			)
 			self.instr("push DWORD eax")
 			self.instr("mov eax, [eax]")
@@ -570,7 +667,7 @@ class FunctionCompiler(Compiler):
 
 		self.generate_expression({ "String Literal": name })
 		self.instr("push eax")
-		self.generate_expression(expr)
+		self.generate_expression(expr, passqual=qual_name)
 		self.instr("push eax")
 		self.instr("call [eax]")
 		self.instr("add esp, 8")
@@ -578,23 +675,22 @@ class FunctionCompiler(Compiler):
 
 	def make_arr_literal(self, vals: list[dict]):
 		# again, we use the constant 4 for 32-bit, but 64-bit needs 8
-		self.allocated_bytes+=(len(vals)*4) # total space needed
-		end = self.allocated_bytes+4
+		self.allocated_bytes+=((len(vals)+1)*4) # total space needed
+		arr_addr = current_off = self.allocated_bytes
 
-		start = f"ebp-{end}"
-		addr = start
+		addr = f"ebp-{current_off}"
 
 		for val in vals:
 			self.generate_expression(val)
 			self.instr(f"mov [{addr}], eax")
 
-			end-=4
-			addr = f"ebp-{end}"
+			current_off-=4
+			addr = f"ebp-{current_off}"
 
-		self.instr(f"lea eax, [{start}]")
+		self.instr(f"lea eax, [ebp-{arr_addr}]")
 
-	def reference_var(self, name: str, index: int, getfuncaddr: bool=False):
-		try: memaddr: str = self.symbols.get(name, index)["address"]
+	def reference_var(self, name: str, index: int, getfuncaddr: bool=False, passqual: str=None):
+		try: memaddr: str = self.symbols.get(name, index, passqual)["address"]
 		except TypeError: return # doesn't exist, error was thrown on utils.py side, just exit compilation
 
 		if getfuncaddr:
