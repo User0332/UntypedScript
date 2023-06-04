@@ -1,0 +1,16 @@
+import { printf, strcmp, malloc } from "<libc>"
+import namespace { Object } from "utils/obj"
+
+const main = () => {
+    const person = {
+        name: "Carl",
+        age: 14
+    }
+
+    printf("%s\n", person.name)
+    printf("%d\n", person.age)
+
+    return 0
+}
+
+export { main }

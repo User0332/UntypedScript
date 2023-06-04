@@ -117,8 +117,9 @@ def main():
 
 	if args.out == None:
 		out = basesource+".o"
-		if not (executable or runfile): warn("UTSC 004: -o option unspecified, assuming object file", f">{out}\n")
-	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll", ".modinfo", ".structs", ".uts")) and args.out != 'NULL':
+		if (executable or runfile): out = basesource+".exe"
+		else: warn("UTSC 004: -o option unspecified, assuming object file", f">{out}\n")
+	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll", ".modinfo", ".structs", ".uts", ".exe")) and args.out != 'NULL':
 		warn(f"UTSC 004: '{args.out}' is an invalid output file. Switching to object file by default.")
 		out = basesource+".o"
 	else:
@@ -223,13 +224,13 @@ def main():
 		print("Disassembly:\n")
 		print(asm)
 
-	if out.endswith((".asm", ".o", ".dll")):
+	if out.endswith((".asm", ".o", ".dll", ".exe")):
 		asmname = ''.join(out.split('.')[:-1])+".asm"
 
 		with open(asmname, 'w') as f:
 			f.write(asm)
 
-	if out.endswith((".o", ".dll")):
+	if out.endswith((".o", ".dll", ".exe")):
 		objname = ''.join(out.split('.')[:-1])+".o"
 		tempname = f"{objname}.temp"
 
@@ -285,14 +286,12 @@ def main():
 		try: os_remove(objname)
 		except FileNotFoundError: pass
 
-	if runfile or executable:
-		exepath = out.removesuffix("o")+"exe"
-
+	if out.endswith(".exe"):
 		try: subprocess_call(
 			[
 				config["gccPath"],
-				out,
-				"-o", exepath
+				objname,
+				"-o", out
 			]
 		)
 		except OSError as e:
@@ -303,10 +302,10 @@ def main():
 
 	if runfile:
 		try:
-			ret_code = subprocess_call([exepath]) # maybe print this later?
-			os_remove(exepath)
+			ret_code = subprocess_call([out]) # maybe print this later?
+			os_remove(out)
 		except OSError as e:
-			throw(f"UTSC 003: A file went missing while trying to run & remove {exepath} (from {file}) - python: {e}")
+			throw(f"UTSC 003: A file went missing while trying to run & remove {out} (from {file}) - python: {e}")
 		
 		
 

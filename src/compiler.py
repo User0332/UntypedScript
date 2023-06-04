@@ -456,7 +456,7 @@ class FunctionCompiler(Compiler):
 		self.text = '\n'.join(self.text.splitlines()[:-1])
 		return instr
 
-	def generate_expression(self, expr: dict, getfuncaddr: bool=False, propassign: bool=False, passqual: str=None):
+	def generate_expression(self, expr: dict, getfuncaddr: bool=False, propassign: bool=False, passqual: str=None, noopt: bool=False):
 		key: str; node: dict
 
 		for key, node in expr.items():
@@ -547,7 +547,7 @@ class FunctionCompiler(Compiler):
 			elif key.startswith("Numerical Constant"):
 				self.instr(f"mov eax, {node}")
 			elif key.startswith("Variable Reference"):
-				self.reference_var(node["name"], node["index"], getfuncaddr=getfuncaddr, passqual=passqual)
+				self.reference_var(node["name"], node["index"], getfuncaddr=getfuncaddr, passqual=passqual, noopt=noopt)
 			elif key.startswith("Anonymous Function"):
 				params: dict[str, str] = node["parameters"]
 				body: dict = node["body"]
@@ -657,7 +657,8 @@ class FunctionCompiler(Compiler):
 			
 			self.generate_expression(
 				{ "Addr Operation ref" : { "expr": expr } },
-				passqual=qual_name
+				passqual=qual_name,
+				noopt=True
 			)
 			self.instr("push DWORD eax")
 			self.instr("mov eax, [eax]")
@@ -667,7 +668,7 @@ class FunctionCompiler(Compiler):
 
 		self.generate_expression({ "String Literal": name })
 		self.instr("push eax")
-		self.generate_expression(expr, passqual=qual_name)
+		self.generate_expression(expr, passqual=qual_name, noopt=True)
 		self.instr("push eax")
 		self.instr("call [eax]")
 		self.instr("add esp, 8")
@@ -689,7 +690,7 @@ class FunctionCompiler(Compiler):
 
 		self.instr(f"lea eax, [ebp-{arr_addr}]")
 
-	def reference_var(self, name: str, index: int, getfuncaddr: bool=False, passqual: str=None):
+	def reference_var(self, name: str, index: int, getfuncaddr: bool=False, passqual: str=None, noopt: bool=False):
 		try: memaddr: str = self.symbols.get(name, index, passqual)["address"]
 		except TypeError: return # doesn't exist, error was thrown on utils.py side, just exit compilation
 
@@ -701,7 +702,7 @@ class FunctionCompiler(Compiler):
 			self.instr(f"lea eax, [{memaddr}]")
 			return
 
-		self.instr(f"mov eax, [{memaddr}]")
+		self.instr(f"mov eax, [{memaddr}]{' ; no-optimize' if noopt else ''}")
 
 	def call_func(self, node: dict):
 		addr: dict = node["addr"]

@@ -34,6 +34,10 @@ class AssemblyOptimizer:
 		for i, line in enumerate(self.asm.splitlines()):
 			line = line.strip()
 
+			if "; no-optimize" in line:
+				self.optimized+=line+"\n"
+				continue
+
 			match = re_match("mov (.*), 0", line)
 
 			try:
