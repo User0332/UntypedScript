@@ -1,2 +1,2 @@
-Struct Person has members ['name', 'age']
+Struct 'Person' has members ['name', 'age']
 Function 'main' takes {}

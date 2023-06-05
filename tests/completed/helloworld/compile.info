@@ -1,0 +1,15 @@
+
+Function 'my_other_func' takes {}
+Function 'main' takes {}
+  Local var 'x' declared as a CONST int/float (5)
+  Anonymous Function (label with counter @ 0) takes {}
+Function of expr {'Variable Reference': {'name': 'puts', 'index': 151}} called with [{'String Literal': 'this is in an inner function!'}]
+Function of expr {'Variable Reference': {'name': 'puts', 'index': 218}} called with [{'String Literal': 'Hello, World!'}]
+Function of expr {'Variable Reference': {'name': 'printf', 'index': 241}} called with [{'String Literal': 'x is equal to... %d\n\n'}, {'Variable Reference': {'name': 'x', 'index': 275}}]
+Function of expr {'Variable Reference': {'name': 'puts', 'index': 280}} called with [{'String Literal': "I'm sleeping for 1 second!"}]
+Function of expr {'Variable Reference': {'name': 'sleep', 'index': 316}} called with [{'Numerical Constant': 1}]
+Function of expr {'Variable Reference': {'name': 'puts', 'index': 326}} called with [{'String Literal': "I'm awake now!\n"}]
+Function of expr {'Variable Reference': {'name': 'my_other_func', 'index': 400}} called with []
+Function of expr {'Variable Reference': {'name': 'printf', 'index': 353}} called with [{'String Literal': 'my other func always returns %d???\n'}, {'Function Call': {'addr': {'Variable Reference': {'name': 'my_other_func', 'index': 400}}, 'arguments': []}}]
+Function of expr {'Variable Reference': {'name': 'inner_function', 'index': 461}} called with []
+Function of expr {'Variable Reference': {'name': 'printf', 'index': 418}} called with [{'String Literal': "inner function returns '%s'...\n"}, {'Function Call': {'addr': {'Variable Reference': {'name': 'inner_function', 'index': 461}}, 'arguments': []}}]

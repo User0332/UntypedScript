@@ -84,7 +84,6 @@ At the moment (although the test conducted is very small), there seems to be a n
 - Different types of functions
 	- Inline functions (`ideas/optimization/funcs`)
 	- Pure functions (`ideas/optimization/funcs`)
-	- Stacklocal functions
 	- Heap-allocated functions
 - Error throwing that actually shows the correct line
 - Solve recursion errors in parser
@@ -92,7 +91,11 @@ At the moment (although the test conducted is very small), there seems to be a n
 - Floats
 	- Literals
 	- Arithmetic (maybe thru functions because the language is untyped)
-- Add asm optimizations (in progress, constant task)
+- Optimizations
+	- Add asm optimizations (in progress, constant task)
+	- Type hinting for optimization
+	- Other optimizations from compiler collected info, type inferencing, and predefined knowledge of libc functions
+	- Compiler speed optimizations
 - Language information (constantly in progress)
 	- Language Specification/Standard
 	- Docs
@@ -112,7 +115,6 @@ At the moment (although the test conducted is very small), there seems to be a n
 - Dynamic Objects
 	- Object integration with C structs
 	- Object destructuring
-- Type hinting for optimization
 - May integrate a sort of lightweight runtime in the future (for a try-catch framework, etc.) that itself runs on the C runtime
 	- If this is added there will be an option to compile with the UTS runtime and an option to compile without the runtime (both executables will be standalone (as long as the C runtime exists), the UTS runtime will be automatically linked into the output)
 - VSCode extension

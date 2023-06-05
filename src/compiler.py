@@ -91,12 +91,13 @@ class Compiler:
 				self
 			)
 
+			self.collected_info+=f"Function '{name}' takes {func_compiler.params}\n"
+
 			func_code = func_compiler.traverse()
 
 			self.instr(f"_{name}:")
 			self.instr(func_code)
 
-			self.collected_info+=f"Function '{name}' takes {func_compiler.params}\n"
 		elif value.get("String Literal") is not None:
 			value = ', '.join(str(ord(c)) for c in value["String Literal"])
 
@@ -566,6 +567,8 @@ class FunctionCompiler(Compiler):
 				params: dict[str, str] = node["parameters"]
 				body: dict = node["body"]
 
+				self.outer.collected_info+=f"  Anonymous Function (label with counter @ {self.outer.hidden_counter}) takes {params}\n"
+
 				func = FunctionCompiler(params, body, self.source, self.outer)
 				func_asm_body = func.traverse()
 				func_name = f"anonymous.{self.outer.hidden_counter}"
@@ -731,6 +734,8 @@ class FunctionCompiler(Compiler):
 		self.instr("call eax") # address will be stored in eax
 		self.instr(f"add esp, {4*len(args)}")
 
+		self.outer.collected_info+=f"Function of expr {addr} called with {args}\n"
+
 	#The two methods below allocate memory for the
 	#variable and place it in a symbol table
 	def declare_variable(self, node: dict):
@@ -753,6 +758,11 @@ class FunctionCompiler(Compiler):
 		self.generate_expression(value)
 		self.instr(f"mov [{memaddr}], eax")
 
+		if value.get("String Literal"):
+			self.outer.collected_info+=f"  Local var '{name}' declared as a {_type} string ({value['String Literal']!r})\n"
+		elif value.get("Numerical Constant"):
+			self.outer.collected_info+=f"  Local var '{name}' declared as a {_type} int/float ({value['Numerical Constant']})\n"
+
 		self.allocated_bytes+=4
 	#
 
@@ -768,7 +778,7 @@ class FunctionCompiler(Compiler):
 
 	def assign_variable(self, node: dict):
 		name = node["name"]
-		value = node["value"]
+		value: dict[str, dict] = node["value"]
 		index = node["index"]
 
 		memaddr = self.symbols.assign(name, value, index)
@@ -776,6 +786,12 @@ class FunctionCompiler(Compiler):
 		self.generate_expression(value)
 
 		self.instr(f"mov [{memaddr}], eax")
+
+		if value.get("String Literal"):
+			self.outer.collected_info+=f"  Local var '{name}' now has string value ({value['String Literal']!r})\n"
+		elif value.get("Numerical Constant"):
+			self.outer.collected_info+=f"  Local var '{name}' now has int/float value ({value['Numerical Constant']})\n"
+
 
 	def generate_prolog(self):
 		return f"push ebp\n\tmov ebp, esp\n\tsub esp, {self.allocated_bytes}"
