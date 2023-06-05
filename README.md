@@ -81,6 +81,11 @@ At the moment (although the test conducted is very small), there seems to be a n
 ## Next on the list to do:
 
 - Test on Linux system
+- Different types of functions
+	- Inline functions (`ideas/optimization/funcs`)
+	- Pure functions (`ideas/optimization/funcs`)
+	- Stacklocal functions
+	- Heap-allocated functions
 - Error throwing that actually shows the correct line
 - Solve recursion errors in parser
 - Remove weird parser bugs that result in a lot of errors

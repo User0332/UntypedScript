@@ -119,7 +119,7 @@ def main():
 		out = basesource+".o"
 		if (executable or runfile): out = basesource+".exe"
 		else: warn("UTSC 004: -o option unspecified, assuming object file", f">{out}\n")
-	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll", ".modinfo", ".structs", ".uts", ".exe")) and args.out != 'NULL':
+	elif not args.out.endswith((".asm", ".lst", ".json", ".o", ".dll", ".modinfo", ".structs", ".uts", ".exe", ".info")) and args.out != 'NULL':
 		warn(f"UTSC 004: '{args.out}' is an invalid output file. Switching to object file by default.")
 		out = basesource+".o"
 	else:
@@ -219,6 +219,10 @@ def main():
 	if out.endswith(".structs"):
 		with open(out, 'w') as f:
 			dump(compiler.structs, f)
+
+	if out.endswith(".info"):
+		with open(out, 'w') as f:
+			f.write(compiler.collected_info)
 
 	if show in ("dis", "disassemble", "disassembly", "asm", "assembly", "all"):
 		print("Disassembly:\n")

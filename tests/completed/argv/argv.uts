@@ -1,10 +1,10 @@
 import { printf } from "<libc>"
-import { foreach } from "utils/uts-array"
+import namespace { Array } from "utils/uts-array"
 
 const main = (argc, argv) => {
 	printf("argc = %i\n", argc)
 
-	foreach(
+	Array.ForEach(
 		argv, argc, 
 		(item, index) => {
 			printf("argv[%i] = %s\n", index, item)

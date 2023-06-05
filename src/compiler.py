@@ -32,12 +32,14 @@ class Compiler:
 		self.optimize = optimize
 		self.compiler_path = compiler_path+'/..' if compiler_path.endswith("src") else compiler_path # this will point to the src folder, we want it to point to root proj directory
 		self.file_path = file_path
+		self.filename = filename
 		self.link_with: list[str] = []
 		self.exports: list[str] = []
 		self.imported_modinfo: dict[str, dict[str, Union[list[str], dict]]] = {}
 		self.names_from: dict[str, str] = {}
 		self.in_namespace: list[str] = []
 		self.imported_names: list[str] = [] # for checking for imports for special features
+		self.collected_info: str = '\n'.join(f"Struct '{struct}' has members {members}" for struct, members in self.structs.items())+'\n' # currently just for debug to see how many optimizations are possible
 
 		# add more options - i.e. architecture from cmd line args
 		self.platform = "win32" if sys_platform == "win32" else "elf32"
@@ -93,10 +95,14 @@ class Compiler:
 
 			self.instr(f"_{name}:")
 			self.instr(func_code)
+
+			self.collected_info+=f"Function '{name}' takes {func_compiler.params}\n"
 		elif value.get("String Literal") is not None:
 			value = ', '.join(str(ord(c)) for c in value["String Literal"])
 
 			self.datainstr(f"_{name} db {value}, 0")
+
+			self.collected_info+=f"Global variable '{name}' is the string {value['String Literal']!r}\n"
 		else:
 			try: value = eval(self.evaluator.simplify_numerical_expression(value))
 			except SigNonConstantNumericalExpressionException:
@@ -104,6 +110,8 @@ class Compiler:
 				throw("UTSC 303: Only constant numerical/function/string values allowed in global scope", code)
 
 			self.datainstr(f"_{name} dd {value}")
+
+			self.collected_info+=f"Global variable '{name}' is the number {value}\n"
 	#
 
 	def gen_modinfo(self):
@@ -380,6 +388,12 @@ class Compiler:
 		for name in node:
 			self.topinstr(f"global _{name}")
 			self.exports.append(name)
+
+			if (name in self.names_from) and (self.names_from[name] != self.filename):
+					throw(f"UTSC 309: name '{name}' is defined twice - in both {self.names_from[name]!r} and {self.filename!r}")
+					continue
+			
+			self.names_from[name] = self.filename
 
 	def export_ns(self, node: list[str]):
 		for ns in node:
