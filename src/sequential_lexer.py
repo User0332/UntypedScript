@@ -37,7 +37,8 @@ class Lexer:
 			"ref": "ADDR_OP",
 			"deref": "ADDR_OP",
 			"struct": "STRUCT",
-			"heapalloc": "HEAP_ALLOC"
+			"heapalloc": "HEAP_ALLOC",
+			"localonly": "LOCALLY_EXPOSED_FUNC"
 		}
 		self.SPECIALS = "()[]{}.:,;"
 		self.OPERATORS = (

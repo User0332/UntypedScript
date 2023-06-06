@@ -149,7 +149,7 @@ class ArgParser(ArgumentParser):
 
 class SymbolTable:
 	def __init__(self, code, parent=None):
-		self.symbols: dict[str] = {}
+		self.symbols: dict[str, dict[str]] = {}
 		self.parent: SymbolTable = parent
 		self.code = code
 
@@ -170,15 +170,16 @@ class SymbolTable:
 		
 		return attr
 
-	def declare(self, name: str, dtype: str, sizeb: int, address: str):
+	def declare(self, name: str, dtype: str, sizeb: int, address: str, beforeinstr: str=""):
 		if self.symbols.get(name, {}).get("type", "").startswith("CONST"):
 			throw(f"UTSC 306: Name Error: Attemped to redeclare to constant '{name}'")
 			return
 
 		self.symbols[name] = {
-			"type" : dtype, 
-			"size" : sizeb, 
-			"address" : address, 
+			"type": dtype, 
+			"size": sizeb, 
+			"address": address,
+			"beforeinstr": beforeinstr,
 			"value" : None
 		}
 

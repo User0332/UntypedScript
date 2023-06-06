@@ -84,7 +84,7 @@ At the moment (although the test conducted is very small), there seems to be a n
 - Different types of functions
 	- Inline functions (`ideas/optimization/funcs`)
 	- Pure functions (`ideas/optimization/funcs`)
-	- Stack-allocated functions
+	- Stack-allocated functions -> this will probably not become a feature, the idea was replaced with the `localonly` function feature
 	- Heap-allocated functions
 - Error throwing that actually shows the correct line
 - Solve recursion errors in parser

@@ -22,6 +22,7 @@ class Compiler:
 		self.ast = ast
 		self.top = ""
 		self.text = "section .text"
+		self.unprocessed_text = "section .text"
 		self.bss = "section .bss"
 		self.data = "section .data"
 		self.symbols = SymbolTable(code)
@@ -48,8 +49,9 @@ class Compiler:
 	def asm(self) -> str:
 		return f"{self.top}\n\n{self.bss}\n\n{self.text}\n\n{self.data}"
 
-	def instr(self, instruction: str):
+	def instr(self, instruction: str, unprocessed: str=None):
 		self.text+=f"\n{instruction}"
+		self.unprocessed_text+=f"\n{unprocessed if unprocessed is not None else instruction}"
 
 	def topinstr(self, instr: str):
 		self.top+=f"\n{instr}"
@@ -96,7 +98,7 @@ class Compiler:
 			func_code = func_compiler.traverse()
 
 			self.instr(f"_{name}:")
-			self.instr(func_code)
+			self.instr(func_code, unprocessed=func_compiler.text)
 
 		elif value.get("String Literal") is not None:
 			value = ', '.join(str(ord(c)) for c in value["String Literal"])
@@ -445,15 +447,17 @@ class Compiler:
 #
 
 class FunctionCompiler(Compiler):
-	def __init__(self, params: dict[str, str], body: dict, code: str, outer: Compiler):
+	def __init__(self, params: dict[str, str], body: dict, code: str, outer: Compiler, localonly_label: str=""):
 		self.text = ""
+		self.unprocessed_text = ""
 		self.body = body
 		self.allocated_bytes = 0
 		self.symbols = SymbolTable(code, outer.symbols)
 		self.source = code
 		self.outer = outer
 		self.params = params
-		self.post_prolog = ""
+		self.localonly_offset_label = localonly_label
+		self.localonly_amount = 0 # to be set after object creation
 
 		arg_offset = 8
 		for param, dtype in params.items(): # reserve space for each arg
@@ -463,8 +467,12 @@ class FunctionCompiler(Compiler):
 
 			arg_offset+=4
 
-	def instr(self, instr: str):
+		self.last_arg_offset = arg_offset
+
+	def instr(self, instr: str, unprocessed: str=None):
 		self.text+=f"\n\t{instr}"
+		self.unprocessed_text+=f"\n{unprocessed if unprocessed is not None else instr}"
+
 
 	def remove_last_instr(self):
 		instr = self.text.splitlines()[-1]
@@ -566,19 +574,54 @@ class FunctionCompiler(Compiler):
 			elif key.startswith("Anonymous Function"):
 				params: dict[str, str] = node["parameters"]
 				body: dict = node["body"]
+				_type: str = node["type"]
 
-				self.outer.collected_info+=f"  Anonymous Function (label with counter @ {self.outer.hidden_counter}) takes {params}\n"
+				if _type == "localonly":
+					self.outer.collected_info+=f"  Local-only Anonymous Function (label with counter @ {self.outer.hidden_counter}) takes {params}\n"
+					
+					offset_name = f"localonly.arg_offset.NOT_THREAD_SAFE.{self.outer.hidden_counter}"
+					self.outer.datainstr(f"{offset_name} dd 0")
 
-				func = FunctionCompiler(params, body, self.source, self.outer)
-				func_asm_body = func.traverse()
-				func_name = f"anonymous.{self.outer.hidden_counter}"
+					func = FunctionCompiler(params, body, self.source, self.outer, offset_name)
 
-				self.outer.instr(f"{func_name}:")
-				self.outer.instr(func_asm_body)
+					last_offset = func.last_arg_offset
 
-				self.instr(f"mov eax, {func_name}")
+					for symbol, info in tuple(self.symbols.symbols.items())[::-1]:
+						func.symbols.declare(
+							symbol,
+							info["type"],
+							info["size"],
+							f"ebp+eax+{last_offset}",
+							f"mov eax, [{offset_name}]"
+						)
 
-				self.outer.hidden_counter+=1
+						last_offset+=4
+
+					func.localonly_amount = last_offset-func.last_arg_offset
+
+					func_name = f"anonymous.{self.outer.hidden_counter}"
+					func_asm_body = func.traverse()
+					self.outer.instr(f"{func_name}:")
+					self.outer.instr(func_asm_body, unprocessed=func.text)
+
+					self.instr(f"mov eax, {func_name}")
+
+					self.outer.hidden_counter+=1
+				elif _type == "heapalloc":
+					pass
+				else:
+					self.outer.collected_info+=f"  Anonymous Function (label with counter @ {self.outer.hidden_counter}) takes {params}\n"
+
+					func = FunctionCompiler(params, body, self.source, self.outer)
+					func_asm_body = func.traverse()
+					func_name = f"anonymous.{self.outer.hidden_counter}"
+					self.outer.hidden_counter+=1
+
+					self.outer.instr(f"{func_name}:")
+					self.outer.instr(func_asm_body, unprocessed=func.text)
+
+					self.instr(f"mov eax, {func_name}")
+
 			elif key.startswith("String Literal"):
 				strname = f"string.{self.outer.hidden_counter}"
 				node = ', '.join(str(ord(c)) for c in node)
@@ -708,7 +751,10 @@ class FunctionCompiler(Compiler):
 		self.instr(f"lea eax, [ebp-{arr_addr}]")
 
 	def reference_var(self, name: str, index: int, getfuncaddr: bool=False, passqual: str=None, noopt: bool=False):
-		try: memaddr: str = self.symbols.get(name, index, passqual)["address"]
+		try:
+			info = self.symbols.get(name, index, passqual)
+			memaddr = info["address"]
+			self.instr(info["beforeinstr"])
 		except TypeError: return # doesn't exist, error was thrown on utils.py side, just exit compilation
 
 		if getfuncaddr:
@@ -731,8 +777,12 @@ class FunctionCompiler(Compiler):
 
 		self.generate_expression(addr, getfuncaddr=True)
 
+		if self.localonly_offset_label: self.instr("; <create-later [localonly-add-to-offset]>")
+
 		self.instr("call eax") # address will be stored in eax
 		self.instr(f"add esp, {4*len(args)}")
+
+		if self.localonly_offset_label: self.instr("; <create-later [localonly-sub-from-offset]>")
 
 		self.outer.collected_info+=f"Function of expr {addr} called with {args}\n"
 
@@ -792,16 +842,14 @@ class FunctionCompiler(Compiler):
 		elif value.get("Numerical Constant"):
 			self.outer.collected_info+=f"  Local var '{name}' now has int/float value ({value['Numerical Constant']})\n"
 
-
 	def generate_prolog(self):
 		return f"push ebp\n\tmov ebp, esp\n\tsub esp, {self.allocated_bytes}"
 
 	def generate_epilog(self):
-		# is f"add esp, {self.allocated_bytes}\n\t" needed?
 		if self.allocated_bytes:
 			return f"mov esp, ebp\n\tpop ebp\n\tret"
 
-		return "pop ebp\n\tret"
+		return "; <add-later? [check-allocated-bytes]>\n\tpop ebp\n\tret"
 
 	def return_val(self, expr: dict):
 		if expr is None: self.instr("xor eax, eax")
@@ -847,6 +895,24 @@ class FunctionCompiler(Compiler):
 		self.instr(f"jmp {whilelabel}")
 		self.instr(f"{contlabel}:")
 
+	def process_text(self):
+		processed = self.text.replace(
+			"; <create-later [localonly-add-to-offset]>",
+			f"add DWORD [{self.localonly_offset_label}], {self.localonly_amount+(self.last_arg_offset-8)+self.allocated_bytes}"
+		)
+
+		processed = processed.replace(
+			"; <create-later [localonly-sub-from-offset]>",
+			f"sub DWORD [{self.localonly_offset_label}], {self.localonly_amount+(self.last_arg_offset-8)+self.allocated_bytes}"
+		)
+
+		processed = processed.replace(
+			"; <add-later? [check-allocated-bytes]>",
+			"mov esp, ebp" if self.allocated_bytes else ""
+		)
+
+		return processed
+
 	#Traverses the AST and passes off each node to a specialized function
 	def traverse(self, top: dict=None):
 		key: str; node: dict
@@ -875,5 +941,7 @@ class FunctionCompiler(Compiler):
 			else:
 				throw(f"(fatal) UTSC 305: Unimplemented or Invalid AST Node '{key}'")
 				return
+			
+		if top is self.body: self.text = f"\t{self.generate_prolog()}\n\t{self.text}\n\t{self.generate_epilog()}"
 
-		return f"\t{self.generate_prolog()}\n\t{self.text}\n\t{self.generate_epilog()}"
+		return self.process_text()

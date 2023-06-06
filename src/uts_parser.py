@@ -155,16 +155,21 @@ class UnimplementedNode(Node):
 		return '{ "Unimplemented Node" : null }'
 
 class AnonymousFunctionNode(Node):
-	def __init__(self, params: dict[str, str], body: dict):
+	NORMAL = "normal"
+	LOCALLY_EXPOSED = "localonly"
+	HEAP_ALLOCATED = "heapalloced"
+
+	def __init__(self, params: dict[str, str], body: dict, flag: str=NORMAL):
 		self.params = dumps(params)
 		
 		if tuple(body.values())[-1].get("Return Statement") is None:
-			body["Expression_CompilerAddedDefaultReturn"] = loads(str(FunctionReturnStatement(NumNode(0))))
+			body["Expression_CompilerAddedDefaultReturn"] = loads(str(FunctionReturnStatement(None)))
 
 		self.body = dumps(body)
+		self.flag = flag
 	
 	def __repr__(self):
-		return f'{{"Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}  }} }}'
+		return f'{{"Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}, "type": "{self.flag}" }} }}'
 
 class NamespaceDeclarationNode(Node):
 	def __init__(self, name: str, body: dict):
@@ -395,6 +400,7 @@ class Parser:
 		self.magic_num = -1 # misc number that will never be the same in between uses
 		self.in_paren = []
 		self.in_func = []
+		self.in_body = []
 		self.idx = -1
 		self.structs: dict[str, list[str]] = {
 			# name: members[]
@@ -444,9 +450,10 @@ class Parser:
 
 		return expr
 
-
 	#gets blocks of code in between curly braces
 	def get_body(self):
+		self.in_body.append(None)
+
 		body = {}
 		while self.current.value != "}":			
 			expr = str(self.expr_wrapper())
@@ -472,6 +479,8 @@ class Parser:
 			self.advance()
 
 		self.advance()
+
+		self.in_body.pop()
 
 		return body
 
@@ -915,8 +924,6 @@ class Parser:
 				self.advance()
 				
 				else_body = loads(str(self.conditional_expr()))
-				
-				self.advance()
 
 				return ConditionalStatementNode(
 					condition, if_body, else_body
@@ -977,6 +984,8 @@ class Parser:
 		)
 	
 	def comp_expr(self):
+		if self.current.type == "NEWLINE": return
+
 		if self.current.value == "not":
 			self.advance()
 
@@ -1012,22 +1021,41 @@ class Parser:
 			return DerefOpNode(expr)
 		
 		elif self.current.type == "HEAP_ALLOC":
+			start = self.current
+
 			self.advance()
 
-			if self.current.value == '[':
-				self.advance()
+			expr = self.comp_expr()
 
-				vals = self.get_args(']')
-
-				self.advance() # pass last square bracket
-
+			if type(expr) is ArrayLiteralNode:
 				self.magic_num+=1
+				return HeapAllocationNode(expr.vals, self.magic_num)
 
-				return HeapAllocationNode(vals, self.magic_num)
-			
-			code = get_code(self.current, self.current.idx)
+			if type(expr) is AnonymousFunctionNode:
+				self.magic_num+=1
+				expr.flag = AnonymousFunctionNode.HEAP_ALLOCATED
+				expr.magic_num = self.magic_num
+				return expr
 
-			throw(f"UTSC 203: Expected array literal after 'heapalloc', got {fmt_type(self.current.type)}", code)
+			code = get_code(self.code, start.idx)
+
+			throw(f"UTSC 203: Expected array literal or anonymous function after 'heapalloc', got {fmt_type(self.current.type)}", code)
+			return UnimplementedNode()
+	
+		elif self.current.type == "LOCALLY_EXPOSED_FUNC":
+			start = self.current
+			self.advance()
+
+			expr = self.comp_expr()
+
+			if type(expr) is AnonymousFunctionNode:
+				self.magic_num+=1
+				expr.flag = AnonymousFunctionNode.LOCALLY_EXPOSED
+				return expr			
+
+			code = get_code(self.code, start.idx)
+
+			throw(f"UTSC 203: Expected anonymous function after 'localonly', got {fmt_type(self.current.type)}", code)
 			return UnimplementedNode()
 
 		return self.bin_op(self.num_expr, ("==", "!=", '<', '>', "<=", ">=", "and", "or"))
@@ -1372,8 +1400,9 @@ class Parser:
 
 		if self.in_func and (self.current.type == "RETURN"):
 			self.advance()
+			if self.current.value == '}' and self.in_body: return FunctionReturnStatement(None) # we know this is an empty return statement, don't consume '}' so self.get_body() close the body off
 			expr = self.comp_expr()
-
+			
 			return FunctionReturnStatement(expr)
 		if self.current.type == "NEWLINE":
 			return None

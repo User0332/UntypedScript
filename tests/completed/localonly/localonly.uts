@@ -1,0 +1,30 @@
+import { printf } from "<libc>"
+
+const main = () => {
+	let mystr = "some random string"
+
+	const func = localonly ((iterations) => {
+		if (iterations == 0) return
+
+		const myvar = 0
+		const othervar = 12
+
+		printf("mystr -> %s\n", mystr)
+
+		func(iterations-1)
+	})
+
+	printf("func=0x%p (main)\n", func)
+
+	mystr = "Hello, World!"
+
+	func(3)
+
+	mystr = "something else"
+
+	func(1)
+	
+	return 0
+}
+
+export { main }

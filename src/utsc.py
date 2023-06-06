@@ -60,7 +60,7 @@ COMPILER_EXE_PATH = dirname(argv[0]).replace('\\', '/')
 def main():
 	argparser = ArgParser(description="PogScript Compiler", prog = "pogc2")
 	
-	argparser.add_argument("-d", "--dump", type=str, help="show AST, tokens, disassembly, or ALL")
+	argparser.add_argument("-d", "--dump", type=str, help="show AST, tokens, disassembly, unprocessed or ALL (unprocessed is not included in ALL)")
 	argparser.add_argument("-s", "--suppresswarnings", help="suppress all warnings", action="store_true", default=False)
 	argparser.add_argument("filename", nargs='?', default='', type=str, help='Source file')
 	argparser.add_argument("-f", "--fmt", type=str, default="win32", help="format to compile to")
@@ -227,6 +227,10 @@ def main():
 	if show in ("dis", "disassemble", "disassembly", "asm", "assembly", "all"):
 		print("Disassembly:\n")
 		print(asm)
+
+	if show in ("unprocessed",):
+		print("Generated Assembly Code (unprocessed, note that this assembly will not run properly - `-d unprocessed` is merely a tool to look into compiler internals):")
+		print(compiler.unprocessed_text)
 
 	if out.endswith((".asm", ".o", ".dll", ".exe")):
 		asmname = ''.join(out.split('.')[:-1])+".asm"
