@@ -38,7 +38,7 @@ class Lexer:
 			"deref": "ADDR_OP",
 			"struct": "STRUCT",
 			"heapalloc": "HEAP_ALLOC",
-			"localonly": "LOCALLY_EXPOSED_FUNC"
+			"localonly": "LOCALLY_EXPOSED_FUNC",
 		}
 		self.SPECIALS = "()[]{}.:,;"
 		self.OPERATORS = (
@@ -294,13 +294,28 @@ class Lexer:
 
 				try: char = self.code[self.i]
 				except IndexError:
-					return True
+					return "line"
 
-			return True
+			return "line"
+		
+		if char == '*':
+			while 1:
+				self.i+=1
+
+				try: char = self.code[self.i]
+				except IndexError:
+					code = get_code(self.code, self.i-2)
+
+					throw("UTSC 102: Block comment was not closed - terminating tokenization", code)
+					raise SigTermTokenization()
+				
+				if (char == '*') and (self.i+1 < self.num_chars) and (self.code[self.i+1] == '/'):
+					self.i+=1
+					return "block"
 
 		self.i-=1 # move back to original pos
 
-		return False
+		return None # explicit failure
 
 	def tokenize(self) -> list[Token]:
 		tokens: list[Token] = []
@@ -396,11 +411,17 @@ class Lexer:
 				continue
 
 			if char == '/': # try to build a comment
-				if self.try_comment():
+				res =  self.try_comment()
+
+				if res == "line":
 					tokens.append(
 						["NEWLINE", '\n', self.i]
 					)
 
+					self.i+=1
+					continue
+
+				if res == "block":
 					self.i+=1
 					continue
 

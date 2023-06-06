@@ -8,7 +8,7 @@ UTSC/Other (0XX)
 
 Lexer (1XX)
 1 Invalid escape code in string
-2 Unterminated string
+2 Unexpected EOF
 3 Invalid float literal
 4 Unexpected token encountered
 
