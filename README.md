@@ -1,6 +1,6 @@
 # UntypedScript
 
-Project that branched off of the discontinued [PogScript](https://github.com/User0332/PogScript), with a considerably different JavaScript-like syntax. UntypedScript's goal is to become an easy-to-understand and easy-to-write language with speeds comparable to that of C or C++.
+Project that branched off of the discontinued [PogScript](https://github.com/User0332/PogScript), with a considerably different JavaScript-like syntax. UntypedScript's goal is to become an easy-to-understand and easy-to-write language with speeds comparable to that of C or C++. Version `1.0.0` of the language will be published an available for download as soon as floats are introduced and error throwing is fixed (see the [todo list](#next-on-the-list-to-do))
 
 Boils down to assembly code. As per the name, includes no form of a type system - you are on your own! Type hints may be introduced in the future. Sample Hello World - (other programs can be found in `tests/`)
 
@@ -88,7 +88,7 @@ At the moment (although the test conducted is very small), there seems to be a n
 	- Heap-allocated functions
 - Error throwing that actually shows the correct line
 - Solve recursion errors in parser
-- Remove weird parser bugs that result in a lot of errors
+- Remove weird parser bugs that result in a lot of errors (ongoing, constant task)
 - Floats
 	- Literals
 	- Arithmetic (maybe thru functions because the language is untyped)
