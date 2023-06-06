@@ -1,0 +1,16 @@
+{
+    "ExpressionNumerical": 4,
+    "ExpressionBoolean": true,
+    "ExpressionString": "hello there!",
+    "ExpressionComplex": {
+        "Binary Operation +": [
+            { "Numerical Constant": 10 },
+            {
+                 "Variable Reference": {
+                    "name": "num",
+                    "index": 0
+                }
+            }
+        ]
+    }
+}

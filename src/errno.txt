@@ -1,10 +1,11 @@
-UTSC/Other (0XX)
+UTSC (0XX)
 1 No specificed source file, assuming first valid file
 2 No valid source file found
 3 File not found
 4 Command line argument error/warning
 5 Parser ran into Python error (specific to implementation, hopefully fixed in the future)
 6 Config Error
+7 Invalid AST insert
 
 Lexer (1XX)
 1 Invalid escape code in string
@@ -17,7 +18,9 @@ Parser (2XX)
 2 Unexpected EOF
 3 Expected token
 4 Constant variable was not assigned a value
-5 Duplicate parameter
+5 Name Error
+6 File not found
+7 Invalid AST Expression
 
 Compiler (3XX)
 1 File not found

@@ -1,11 +1,10 @@
 import sys
-import traceback
 from types import FunctionType # for debugging
 
 # max limit possible without crashing compiler
 sys.setrecursionlimit(3800)
 
-from json import loads, dumps
+from json import JSONDecodeError, load, loads, dumps
 
 from utils import (
 	Token, 
@@ -15,11 +14,25 @@ from utils import (
 	fmt_type
 )
 
-
 #Node Utility Classes
 class Node:
+	def __init__(self, val: dict, code: str, idx: int, name: str):
+		if type(val) in (int, float):
+			self.inner = NumNode(val)
+		elif type(val) is bool:
+			self.inner =  NumNode(int(val))
+		elif type(val) is str:
+			self.inner = StringLiteral(val)
+		elif type(val) is dict:
+			self.inner = dumps(val) # this should be an expression
+		else:
+			self.inner = None
+			code = get_code(code, idx)
+
+			throw(f"UTSC 207: AST Expression '{name}' is not valid (is type list -> only int/float, str, bool, and dict are valid node types)!", code)
+
 	def __repr__(self) -> str:
-		return f'{{ "Node": "I am a node!" }}'
+		return str(self.inner)
 
 class NumNode(Node):
 	def __init__(self, value: str):
@@ -390,6 +403,8 @@ class DynamicObjectNode(Node):
 		)
 	}
 		}}'''
+	
+IMPORTED_EXPRS: dict[str, Node] = {}
 #
 
 #Parser
@@ -733,6 +748,31 @@ class Parser:
 		if current.type == "STRING":
 			self.advance()
 			return StringLiteral(current.value)
+		if current.type == "AST_INSERT":
+			self.advance()
+
+			if self.current.type != "IDENTIFIER":
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 203: Expected identifier, got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+
+				self.advance()
+				return UnimplementedNode()
+			
+			try:
+				name = self.current.value
+				self.advance()
+				
+				return IMPORTED_EXPRS[name]
+			except KeyError:
+				self.decrement()
+
+				code = get_code(self.code, self.current.idx)
+
+				throw(f"UTSC 205: AST Expression '{self.current.value}' not imported!", code)
+			
+			return UnimplementedNode()
+				
 		if current.value == '[':
 			self.advance()
 
@@ -1318,11 +1358,14 @@ class Parser:
 
 				return NSImportNode(modnode.value, names, modnode.idx)
 			
-			struct = False
+			struct = ast_expr = False
 
 			if self.current.type == "STRUCT":
 				struct = True
 				self.advance()
+			elif self.current.type == "AST_EXPRESSION":
+				self.advance()
+				ast_expr = True
 
 			names: list[str] = []
 			
@@ -1366,7 +1409,34 @@ class Parser:
 			self.advance()
 
 			if struct: return StructImportNode(modnode.value, names, modnode.idx)
-			
+
+			if ast_expr:
+				try:
+					with open(modnode.value, 'r') as f:
+						exprs: dict[str, dict] = load(f)
+
+						for name in names:
+							if name in IMPORTED_EXPRS:
+								code = get_code(self.code, modnode.idx)
+
+								throw(f"UTSC 305: Expression '{name}' already imported!", code)
+								continue
+							IMPORTED_EXPRS[name] = Node(exprs[name], self.code, self.current.idx, name)
+				except FileNotFoundError:
+					code = get_code(self.code, modnode.idx)
+
+					throw(f"UTSC 306: AST Module '{modnode.value}' does not exist!", code)
+				except JSONDecodeError:
+					code = get_code(self.code, modnode.idx)
+
+					throw(f"UTSC 306: AST Module '{modnode.value}' does not contain valid JSON!", code)
+				except KeyError:
+					code = get_code(self.code, modnode.idx)
+
+					throw(f"UTSC 306: AST Module '{modnode.value}' does not contain the expression '{name}'!", code)
+				
+				return None
+
 			return ImportNode(modnode.value, names, modnode.idx)
 		
 		if self.current.type == "NAMESPACE":

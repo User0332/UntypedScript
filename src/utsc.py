@@ -173,7 +173,9 @@ def main():
 
 	if compile_optimizations >= 1:
 		simplifier = SyntaxTreePreproccesor(raw_ast)
-		raw_ast = simplifier.simplify()
+		try: raw_ast = simplifier.simplify()
+		except KeyError as e:
+			throw(f"UTSC 007: Invalid AST expression inserted! python: key not found: {e}")
 
 	ast = dumps(raw_ast, indent=1)
 
@@ -187,7 +189,11 @@ def main():
 			f.write(ast)
 
 	if out.endswith(".uts"):
-		lowered = CodeLowerer(raw_ast, code, parser.structs).lower()
+		try: lowered = CodeLowerer(raw_ast, code, parser.structs).lower()
+		except KeyError as e:
+			throw(f"UTSC 007: Invalid AST expression inserted! python: key not found: {e}")
+			lowered = ""
+
 		with open(out, 'w') as f:
 			f.write(
 				lowered
@@ -198,7 +204,10 @@ def main():
 	checkfailure()
 
 	compiler = Compiler(raw_ast, code, COMPILER_EXE_PATH, INPUT_FILE_PATH, file, compile_optimizations, parser.structs)
-	asm = compiler.traverse()
+	try: asm = compiler.traverse()
+	except KeyError as e:
+		throw(f"UTSC 007: Invalid AST expression inserted! python: key not found: {e}")
+		asm = ""
 
 	if (not modularize) and (not out.endswith(".modinfo")):
 		for dependency in compiler.link_with:

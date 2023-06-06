@@ -1,0 +1,23 @@
+import { printf } from "<libc>"
+import astexpr { 
+	ExpressionNumerical,
+	ExpressionBoolean,
+	ExpressionString,
+	ExpressionComplex
+} from "./exprs.json"
+
+const main = () => {
+	const num = astinsert ExpressionNumerical
+	const bool = astinsert ExpressionBoolean
+	const string = astinsert ExpressionString
+	const evaluated_number = astinsert ExpressionComplex
+
+	printf("num=%d\n", num)
+	printf("bool=%d\n", bool)
+	printf("string=%s\n", string)
+	printf("evaluated_number=%d\n", evaluated_number)
+	
+	return 0
+}
+
+export { main }

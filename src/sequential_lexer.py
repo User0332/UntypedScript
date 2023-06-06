@@ -39,6 +39,8 @@ class Lexer:
 			"struct": "STRUCT",
 			"heapalloc": "HEAP_ALLOC",
 			"localonly": "LOCALLY_EXPOSED_FUNC",
+			"astexpr": "AST_EXPRESSION",
+			"astinsert": "AST_INSERT"
 		}
 		self.SPECIALS = "()[]{}.:,;"
 		self.OPERATORS = (
