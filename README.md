@@ -81,6 +81,7 @@ At the moment (although the test conducted is very small), there seems to be a n
 ## Next on the list to do:
 
 - Test on Linux system
+- Import and insert AST expressions
 - Different types of functions
 	- Inline functions (`ideas/optimization/funcs`)
 	- Pure functions (`ideas/optimization/funcs`)
