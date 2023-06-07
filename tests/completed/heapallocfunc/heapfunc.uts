@@ -1,0 +1,29 @@
+import { printf, malloc, memcpy, free } from "<libc>"
+
+const other = () => {
+	let mystr = "Hello, World!"
+
+	let func = heapalloc ((iterations) => {
+		if (iterations == 0) return
+
+		const myvar = 0
+		const othervar = 12
+
+		printf("mystr -> %s\n", mystr)
+
+		// heap-allocated functions may only contain a faulty reference to themselves,
+		// in order for recursion to occur (or in order to reference the function from within),
+		// use the special builtin variable `ceci`
+		ceci(iterations-1)
+	})
+
+	mystr = "something else" // this doesn't change anything with heap-allocated functions
+	
+	return func
+}
+
+const main = () => {
+	other()(4)
+}
+
+export { main }

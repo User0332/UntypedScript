@@ -182,6 +182,9 @@ class AnonymousFunctionNode(Node):
 		self.flag = flag
 	
 	def __repr__(self):
+		if self.flag == AnonymousFunctionNode.HEAP_ALLOCATED:
+			return f'{{ "Verify-Imported0": ["malloc", "heap-allocated functions"], "Verify-Imported1": ["memcpy", "heap-allocated functions"], "Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}, "type": "{self.flag}" }} }}'
+		
 		return f'{{"Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}, "type": "{self.flag}" }} }}'
 
 class NamespaceDeclarationNode(Node):
@@ -1072,9 +1075,7 @@ class Parser:
 				return HeapAllocationNode(expr.vals, self.magic_num)
 
 			if type(expr) is AnonymousFunctionNode:
-				self.magic_num+=1
 				expr.flag = AnonymousFunctionNode.HEAP_ALLOCATED
-				expr.magic_num = self.magic_num
 				return expr
 
 			code = get_code(self.code, start.idx)
@@ -1089,7 +1090,6 @@ class Parser:
 			expr = self.comp_expr()
 
 			if type(expr) is AnonymousFunctionNode:
-				self.magic_num+=1
 				expr.flag = AnonymousFunctionNode.LOCALLY_EXPOSED
 				return expr			
 

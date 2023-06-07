@@ -473,7 +473,6 @@ class FunctionCompiler(Compiler):
 		self.text+=f"\n\t{instr}"
 		self.unprocessed_text+=f"\n{unprocessed if unprocessed is not None else instr}"
 
-
 	def remove_last_instr(self):
 		instr = self.text.splitlines()[-1]
 		self.text = '\n'.join(self.text.splitlines()[:-1])
@@ -607,8 +606,69 @@ class FunctionCompiler(Compiler):
 					self.instr(f"mov eax, {func_name}")
 
 					self.outer.hidden_counter+=1
-				elif _type == "heapalloc":
-					pass
+				elif _type == "heapalloced":
+					self.outer.collected_info+=f"  Heap-allocated Anonymous Function (label with counter @ {self.outer.hidden_counter}) takes {params}\n"
+
+					heapvar_label = f"function.HEAP_ALLOCATED.{self.outer.hidden_counter}"
+					funcsize_label = f"size_of_function.HEAP_ALLOCATED.{self.outer.hidden_counter}"
+					total_mem_label = f"mem_req_for_function.HEAP_ALLOCATED.{self.outer.hidden_counter}"
+
+					self.outer.bssinstr(f"{heapvar_label} resd 1")
+
+					func = FunctionCompiler(params, body, self.source, self.outer)
+
+					last_offset = 0
+
+					for symbol, info in self.symbols.symbols.items():
+						func.symbols.declare(
+							symbol,
+							info["type"],
+							info["size"],
+							f"eax+{funcsize_label}+{last_offset}",
+							beforeinstr=f"mov eax, [{heapvar_label}]"
+						)
+
+						last_offset+=4
+
+					func.symbols.declare( # special symbol `ceci` needed for heap-allocated recursive functions
+						"ceci",
+						"CONST",
+						4,
+						f"eax",
+						beforeinstr=f"mov eax, [{heapvar_label}]"
+					)
+
+					func_name = f"anonymous.{self.outer.hidden_counter}"
+					func_asm_body = func.traverse()
+					self.outer.instr(f"{func_name}:")
+
+					self.outer.instr(func_asm_body, unprocessed=func.text)
+					self.outer.instr(f"{funcsize_label} equ $ - {func_name}")
+					self.outer.instr(f"{total_mem_label} equ {funcsize_label}+{last_offset}")
+
+					self.instr(f"push {total_mem_label}")
+					self.instr("call _malloc")
+					self.instr("add esp, 4")
+					self.instr(f"mov [{heapvar_label}], eax")
+
+					self.instr(f"push {funcsize_label}")
+					self.instr(f"push {func_name}")
+					self.instr(f"push DWORD [{heapvar_label}]")
+					self.instr("call _memcpy")
+					self.instr("add esp, 12")
+
+					for i, (symbol, info) in enumerate(self.symbols.symbols.items()):
+						end_of_func_offset = i*4
+
+						self.instr(f"push DWORD [{info['address']}]")
+
+						self.instr(f"mov eax, [{heapvar_label}]")
+						self.instr(f"add eax, {funcsize_label}+{end_of_func_offset}")
+						self.instr("pop DWORD [eax]")
+
+					self.instr(f"mov eax, [{heapvar_label}]")
+
+					self.outer.hidden_counter+=1
 				else:
 					self.outer.collected_info+=f"  Anonymous Function (label with counter @ {self.outer.hidden_counter}) takes {params}\n"
 
@@ -911,7 +971,7 @@ class FunctionCompiler(Compiler):
 			"mov esp, ebp" if self.allocated_bytes else ""
 		)
 
-		return processed
+		return '\n'.join(line for line in processed.splitlines() if line.strip())
 
 	#Traverses the AST and passes off each node to a specialized function
 	def traverse(self, top: dict=None):
