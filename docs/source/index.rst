@@ -13,6 +13,7 @@ Welcome to UntypedScript's documentation!
    installation
    getstarted
    variables
+   errors
 
 
 Indices and tables

@@ -69,7 +69,7 @@ def main():
 	argparser.add_argument("-m", "--module", action="store_true", help="Compile this file without linking object files")
 	outgroup = argparser.add_mutually_exclusive_group()
 	outgroup.add_argument("-o", "--out", type=str, help="output filename")
-	outgroup.add_argument("-e", "--executable", help="run assemble.ps1 and produce an executable using NASM and MinGW", action="store_true")
+	outgroup.add_argument("-e", "--executable", help="produce an executable using NASM and MinGW/gcc", action="store_true")
 	outgroup.add_argument("-r", "--run", help="Run the uts program and exit", action="store_true")
 	
 	args = argparser.parse_args()

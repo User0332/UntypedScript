@@ -27,7 +27,7 @@ Let's compile the program with the following command:
 utsc -e hello.uts -O2
 ```
 
-The `-e` option specifies to the compiler that we want the output to be an executable format (win32 by default, win32 is also the only format currently supported). The compiler will run `nasm`, `gcc`, and `ld` in the background to create an exectuable for us. Next, we pass the filename of the program that we want to compile, and lastly we'll pass an `-O2` flag to try to optimize the file as much as possible. For more info on command-line options, you can type the command `utsc -h`.
+The `-e` option specifies to the compiler that we want the output to be an executable format (win32 by default, win32 is also the only format currently supported). The compiler will run `nasm`, `gcc`, and `ld` in the background to create an exectuable for us. We can mimic the same behavior by passing `-o hello.exe`, as `utsc` will infer the output file format from the extension. Next, we pass the filename of the program that we want to compile, and lastly we'll pass an `-O2` flag to try to optimize the file as much as possible. For more info on command-line options, you can type the command `utsc -h`.
 
 Lastly, run the generated `hello.exe` file.
 
