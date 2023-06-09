@@ -6,7 +6,7 @@ sys.setrecursionlimit(3800)
 
 from json import JSONDecodeError, load, loads, dumps
 
-from utils import (
+from .utils import (
 	Token, 
 	get_code,
 	throw, 

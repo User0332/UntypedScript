@@ -1,5 +1,5 @@
 import string
-from utils import (
+from .utils import (
 	get_code, throw,
 	SigTermTokenization,
 )

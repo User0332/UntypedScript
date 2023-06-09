@@ -1,0 +1,26 @@
+import { srand, rand, div, time, gettimeofday } from "<libc>"
+
+namespace Math
+{
+	namespace Random {
+		const SeedUp = () => {
+			const timeval = [0, 0]
+			gettimeofday(timeval)
+	
+			srand(timeval[1])
+		}
+
+		const Int = (start, stop) => {
+			Math.Random.SeedUp()
+			return (rand() % ((stop+1)-start))+start
+		}
+
+		const IntSameSeed = (start, stop) => {
+			return (rand() % ((stop+1)-start))+start
+		}
+	}
+} 
+
+export namespace {
+	Math
+}

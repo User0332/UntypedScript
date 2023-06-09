@@ -1,0 +1,3 @@
+C:\Users\carlf\AppData\Local\bin\NASM\nasm.exe
+C:\MinGW\bin\gcc.exe
+C:\MinGW\mingw32\bin\ld.exe

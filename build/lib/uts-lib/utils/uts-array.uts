@@ -1,0 +1,17 @@
+namespace Array
+{
+	const ForEach = (arr, len, callback) => {
+		let i = 0
+		
+		while (i < len)
+		{
+			callback(arr[i], i)
+
+			i+=1
+		}
+	}
+}
+
+export namespace {
+	Array
+}

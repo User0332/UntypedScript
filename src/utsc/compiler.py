@@ -1,4 +1,4 @@
-from utils import (
+from .utils import (
 	get_code,
 	throw,
 	warn,
@@ -6,7 +6,7 @@ from utils import (
 	SigNonConstantNumericalExpressionException
 )
 
-from ast_preprocessor import SyntaxTreePreproccesor
+from .ast_preprocessor import SyntaxTreePreproccesor
 
 from os import remove as os_remove
 from os.path import isfile, normpath, dirname, basename
@@ -192,9 +192,9 @@ class Compiler:
 		uts_mod = normpath(f"{self.file_path}/{module}.uts")
 		modinfo = normpath(f"{module}.modinfo")
 		asm_mod = normpath(f"{self.file_path}/{module}.asm")
-		lib_uts_mod = normpath(f"{self.compiler_path}/lib/{module}.uts")
-		lib_modinfo = normpath(f"{self.compiler_path}/lib/{module}.modinfo")
-		lib_obj_mod = normpath(f"{self.compiler_path}/lib/{module}.o")
+		lib_uts_mod = normpath(f"{self.compiler_path}/uts-lib/{module}.uts")
+		lib_modinfo = normpath(f"{self.compiler_path}/uts-lib/{module}.modinfo")
+		lib_obj_mod = normpath(f"{self.compiler_path}/uts-lib/{module}.o")
 		obj_mod = normpath(f"{self.file_path}/{module}.o")
 
 		if (not isfile(uts_mod) and isfile(lib_uts_mod)):
@@ -289,9 +289,9 @@ class Compiler:
 
 		uts_mod = normpath(f"{self.file_path}/{module}.uts")
 		modinfo = normpath(f"{module}.modinfo")
-		lib_uts_mod = normpath(f"{self.compiler_path}/lib/{module}.uts")
-		lib_modinfo = normpath(f"{self.compiler_path}/lib/{module}.modinfo")
-		lib_obj_mod = normpath(f"{self.compiler_path}/lib/{module}.o")
+		lib_uts_mod = normpath(f"{self.compiler_path}/uts-lib/{module}.uts")
+		lib_modinfo = normpath(f"{self.compiler_path}/uts-lib/{module}.modinfo")
+		lib_obj_mod = normpath(f"{self.compiler_path}/uts-lib/{module}.o")
 		obj_mod = normpath(f"{self.file_path}/{module}.o")
 
 		if not isfile(uts_mod):
@@ -376,8 +376,8 @@ class Compiler:
 
 		uts_mod = normpath(f"{self.file_path}/{module}.uts")
 		struct_mod = normpath(f"{self.file_path}/{module}.structs")
-		lib_uts_mod = normpath(f"{self.compiler_path}/lib/{module}.uts")
-		lib_struct_mod = normpath(f"{self.compiler_path}/lib/{module}.structs")
+		lib_uts_mod = normpath(f"{self.compiler_path}/uts-lib/{module}.uts")
+		lib_struct_mod = normpath(f"{self.compiler_path}/uts-lib/{module}.structs")
 
 
 		if not isfile(uts_mod):

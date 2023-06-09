@@ -1,6 +1,6 @@
-from utils import throw, get_code
+from .utils import throw, get_code
 from json import dumps
-from ast_preprocessor import SyntaxTreePreproccesor, SigNonConstantNumericalExpressionException
+from .ast_preprocessor import SyntaxTreePreproccesor, SigNonConstantNumericalExpressionException
 from typing import Union
 
 class CodeLowerer:

@@ -1,12 +1,12 @@
 #LOCAL MODULES
-from sequential_lexer import Lexer
-from uts_parser import Parser
-from ast_cleaner import ASTCleaner
-from ast_preprocessor import SyntaxTreePreproccesor
-from code_lowerer import CodeLowerer
-from compiler import Compiler
-from optimizer import AssemblyOptimizer
-from utils import (
+from .sequential_lexer import Lexer
+from .uts_parser import Parser
+from .ast_cleaner import ASTCleaner
+from .ast_preprocessor import SyntaxTreePreproccesor
+from .code_lowerer import CodeLowerer
+from .compiler import Compiler
+from .optimizer import AssemblyOptimizer
+from .utils import (
 	checkfailure, 
 	throw, 
 	warn, 
@@ -125,10 +125,10 @@ def main():
 	else:
 		out = args.out
 
-	if isfile("config.json"):
-		config = import_config("config.json")
+	if isfile("utsc-config.json"):
+		config = import_config("utsc-config.json")
 	else:
-		config = import_config(f"{COMPILER_EXE_PATH}/../conf/config.json")
+		config = import_config(f"{COMPILER_EXE_PATH}/utsc-config.json")
 			
 	throwerrors()
 	if warnings: printwarnings()
@@ -332,6 +332,22 @@ def main():
 
 	throwerrors()
 	checkfailure()
+
+	return 0
+
+def configure():
+	nasm_path = input("Path to NASM: ")
+	gcc_path = input("Path to MinGW/GCC: ")
+	ld_path = input("Path to ld linker: ")
+
+	conf = {
+		"nasmPath": nasm_path,
+		"gccPath": gcc_path,
+		"ldPath": ld_path
+	}
+
+	with open(f"{COMPILER_EXE_PATH}/utsc-config.json", 'w') as f:
+		dump(conf, f)
 
 	return 0
 

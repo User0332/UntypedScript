@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "untypedscript-utsc"
+version = "0.0.5"
+description = "UntypedScript original implementation compiler"
+readme = "README.md"
+authors = [{ name = "Carl Furtado", email = "carlzfurtado@gmail.com" }]
+license = { file = "LICENSE" }
+classifiers = []
+keywords = []
+dependencies = []
+requires-python = ">= 3.9"
+
+[project.urls]
+Homepage = "https://github.com/User0332/UntypedScript"
+# Documentation = "https://webpy-framework.readthedocs.io/"
+
+[project.scripts]
+utsc = "utsc:main"
+utsc-configure = "utsc:configure"

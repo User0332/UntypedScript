@@ -1,0 +1,3 @@
+[console_scripts]
+utsc = utsc:main
+utsc-configure = utsc:configure

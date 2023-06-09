@@ -1,0 +1,117 @@
+import { malloc, realloc, strcmp, free, printf } from "<libc>"
+
+namespace Object
+{
+	const AddProperty = (obj, name, value) => {
+		obj[0] = (this, name) => {
+			const props = this[2]
+			let i = 0
+
+			while (props[i] != 0)
+			{
+				if (strcmp(props[i], name) == 0)
+				{
+					return this+((i+3)*4)
+				}
+				i+=1
+			}
+
+		}
+
+		obj[1] = (this, name, value) => {
+			const props = (deref (this))[2]
+			let i = 0
+
+			while (props[i] != 0)
+			{
+				if (strcmp(props[i], name) == 0)
+				{
+					(deref (this))[i+3] = value
+					return
+				}
+				i+=1
+			}
+
+			deref (this) = Object.AddProperty(deref (this), name, value)
+		}
+
+		let alreadyprops = obj[2]
+		let len = 0
+
+		while (alreadyprops[len] != 0) { len+=1 }
+
+		alreadyprops = realloc(alreadyprops, (len+2)*4)
+
+		if (alreadyprops == 0) { return 0 } // invalid ptr/object, propadd failed
+
+		alreadyprops[len] = name
+		alreadyprops[len+1] = 0
+
+		obj[2] = alreadyprops // in case the ptr changed for some reason
+		
+		obj = realloc(obj, (len+4)*4)
+		obj[len+3] = value
+
+		return obj // in case ptr changed
+	}
+	
+	const HasProperty = (obj, name) => {
+		let i = 0
+		const props = obj[2]
+
+		while (props[i] != 0)
+		{
+			if (strcmp(props[i], name) == 0) { return 1 }
+			i+=1
+		}
+
+		return 0
+	}
+
+	const AddPropertySafe = (obj, name, value) => {
+		if (Object.HasProperty(obj, name)) return obj
+
+		return Object.AddProperty(obj, name, value)
+	}
+
+	const DeAllocate = (obj) => {
+		free(obj[2])
+		free(obj)
+
+		return 0
+	}
+
+	const GetProperty = (obj, name) => {
+		return deref (obj[0](obj, name))
+	}
+
+	const SetProperty = (obj, name, value) => {
+		if (Object.HasProperty(obj, name))
+			return obj[1](obj, name, value)
+	}
+
+	const SetPropertySafe = (obj, name, value, onsuccess, onfail) => {
+		if (Object.HasProperty(obj, name))
+		{
+			obj[1](obj, name, value)
+			return onsuccess(obj)
+		}
+
+		return onfail(obj)
+	}
+
+	const GetPropertySafe = (obj, name, onsuccess, onfail) => {
+		if (Object.HasProperty(obj, name))
+		{
+			return onsuccess(obj, Object.GetProperty(obj, name))
+		}
+
+		return onfail(obj)
+	}
+
+	const Properties = (obj) => {
+		return obj[2]
+	}
+}
+
+export namespace { Object }

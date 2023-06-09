@@ -97,7 +97,7 @@ def checkfailure():
 
 def import_config(fname: str) -> dict:
 	if not isfile(fname):
-		throw(f"Fatal Error UTSC 006: Config file {fname} does not exist!")
+		throw(f"Fatal Error UTSC 006: Config file {fname} does not exist (use utsc-configure to fix)!")
 		return
 		
 	with open(fname, 'r') as f:
@@ -110,15 +110,12 @@ def import_config(fname: str) -> dict:
 		assert isfile(conf["nasmPath"])
 		assert isfile(conf["gccPath"])
 		assert isfile(conf["ldPath"])
-	except (AssertionError, KeyError):
-		throw(
-			f"Fatal Error UTSC 006: Either some config keys were missing, "
-			"config values are not the correct type, "
-			"or the config values do not exist as files!"
-		)
-		return
 
-	return conf
+		return conf
+	except KeyError as e:
+		throw(f"Fatal Error UTSC 006: Some config keys are missing (failed when trying to find {e!r}, use utsc-configure to fix the config)")
+	except AssertionError:
+		throw("Fatal Error UTSC 006: At least one config value does not exist as a file (the config is invalid)!")
 
 # Custom Exceptions used in the ast preprocessor/lexer
 class SigNonConstantNumericalExpressionException(Exception): pass

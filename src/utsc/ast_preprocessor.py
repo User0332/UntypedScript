@@ -1,4 +1,4 @@
-from utils import SigNonConstantNumericalExpressionException
+from .utils import SigNonConstantNumericalExpressionException
 from typing import Union
 
 valid_nodes = (
