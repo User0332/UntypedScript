@@ -9,8 +9,10 @@ Welcome to UntypedScript's documentation!
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
    installation
    getstarted
+   variables
 
 
 Indices and tables
