@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: untypedscript-utsc
-Version: 0.0.5
+Version: 1.0.0
 Summary: UntypedScript original implementation compiler
 Author-email: Carl Furtado <carlzfurtado@gmail.com>
 License: MIT License
@@ -26,6 +26,7 @@ License: MIT License
         SOFTWARE.
         
 Project-URL: Homepage, https://github.com/User0332/UntypedScript
+Project-URL: Documentation, https://untypedscript.readthedocs.io/en/latest/
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
 License-File: LICENSE

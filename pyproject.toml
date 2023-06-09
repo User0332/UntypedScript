@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "untypedscript-utsc"
-version = "0.0.5"
+version = "1.0.0"
 description = "UntypedScript original implementation compiler"
 readme = "README.md"
 authors = [{ name = "Carl Furtado", email = "carlzfurtado@gmail.com" }]
@@ -16,7 +16,7 @@ requires-python = ">= 3.9"
 
 [project.urls]
 Homepage = "https://github.com/User0332/UntypedScript"
-# Documentation = "https://webpy-framework.readthedocs.io/"
+Documentation = "https://untypedscript.readthedocs.io/en/latest/"
 
 [project.scripts]
 utsc = "utsc:main"

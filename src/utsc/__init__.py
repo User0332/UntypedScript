@@ -24,6 +24,8 @@ from json import (
 	dumps, dump
 )
 
+from importlib import import_module
+
 
 #SYSTEM MODULES
 from subprocess import (
@@ -52,10 +54,9 @@ from sys import (
 )
 
 
-#Indepenedent Environment Constants
-COMPILER_EXE_PATH = dirname(argv[0]).replace('\\', '/')
-#
-
+COMPILER_EXE_PATH: str = dirname(
+	import_module("utsc").__file__
+).replace('\\', '/')
 
 def main():
 	argparser = ArgParser(description="PogScript Compiler", prog = "pogc2")
@@ -105,11 +106,9 @@ def main():
 	except OSError:
 		throw("Fatal Error UTSC 003: Either the specified source file could not be found, or permission was denied.")
 
-	#Dependent Constants
 	INPUT_FILE_PATH = dirname(file).replace("\\", "/")
 	if INPUT_FILE_PATH == '':
 		INPUT_FILE_PATH = "./"
-	#
 
 	chdir(INPUT_FILE_PATH)
 

@@ -40,7 +40,7 @@ class Compiler:
 		self.used_counters: list[int] = []
 		self.hidden_cached: int = None
 		self.optimize = optimize
-		self.compiler_path = compiler_path+'/..' if compiler_path.endswith("src") else compiler_path # this will point to the src folder, we want it to point to root proj directory
+		self.compiler_path = compiler_path+'/..'
 		self.file_path = file_path
 		self.filename = filename
 		self.link_with: list[str] = []
