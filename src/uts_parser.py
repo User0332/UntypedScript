@@ -175,15 +175,19 @@ class AnonymousFunctionNode(Node):
 	def __init__(self, params: dict[str, str], body: dict, flag: str=NORMAL):
 		self.params = dumps(params)
 		
-		if tuple(body.values())[-1].get("Return Statement") is None:
-			body["Expression_CompilerAddedDefaultReturn"] = loads(str(FunctionReturnStatement(None)))
+		try:
+			if tuple(body.values())[-1].get("Return Statement") is None:
+				body["Expression_CompilerAddedDefaultReturn"] = loads(str(FunctionReturnStatement(None)))
+		except IndexError: body["Expression_CompilerAddedDefaultReturn"] = loads(str(FunctionReturnStatement(None)))
+# this is an empty func
 
 		self.body = dumps(body)
 		self.flag = flag
 	
 	def __repr__(self):
 		if self.flag == AnonymousFunctionNode.HEAP_ALLOCATED:
-			return f'{{ "Verify-Imported0": ["malloc", "heap-allocated functions"], "Verify-Imported1": ["memcpy", "heap-allocated functions"], "Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}, "type": "{self.flag}" }} }}'
+			# obviously change these later and take platform into account when using these win32 functions (use mmap instead)
+			return f'{{ "Verify-Imported0": ["HeapFuncAlloc", "heap-allocated functions"], "Verify-Imported1": ["HeapFuncProtect", "heap-allocated functions"], "Verify-Imported1": ["HeapFuncFree", "heap-allocated functions"], "Verify-Imported2": ["memcpy", "heap-allocated functions"], "Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}, "type": "{self.flag}" }} }}'
 		
 		return f'{{"Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}, "type": "{self.flag}" }} }}'
 
@@ -275,7 +279,8 @@ class HeapAllocationNode(Node):
 	def __repr__(self) -> str:
 		return f'''
 		{{
-			"Verify-Imported": ["malloc", "heapalloc"],
+			"Verify-Imported0": ["malloc", "heapalloc"],
+			"Verify-Imported1": ["free", "heapalloc"],
 			"Exec-ExpressionA": {
 				VariableDefinitionNode(
 					"LET", 

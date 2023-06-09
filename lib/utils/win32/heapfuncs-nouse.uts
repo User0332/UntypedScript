@@ -1,0 +1,52 @@
+import { printf, abort } from "<libc>"
+import {
+	VirtualAlloc,
+	VirtualProtect,
+	VirtualFree
+} from "<libc>"
+
+const WINDOWS_H_MEM_COMMIT_RESERVE = 12288 // make these macros once introduced/optimization
+const WINDOWS_H_PAGE_EXECUTE_READ = 32
+const WINDOWS_H_PAGE_READWRITE = 4
+const WINDOWS_H_MEM_RELEASE = 32768
+
+const HeapFuncAlloc = (size) => {
+	// VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE)
+	const mem = VirtualAlloc(0, size, WINDOWS_H_MEM_COMMIT_RESERVE, WINDOWS_H_PAGE_READWRITE)
+	
+	if (mem == 0) {
+		printf("UntypedScript fatal -> failed to allocate memory for heapfunction using VirtualAlloc (returned NULL)\n\tcalled VirtualAlloc(0, %d, 12288, 4)\n", size)
+		abort()
+	}
+
+	return mem
+}
+
+const HeapFuncProtect = (mem, size) => {
+	const old_protection = 0
+
+	// VirtualProtect(mem, size, PAGE_EXECUTE_READ, &old_protection)
+	if (VirtualProtect(mem, size, WINDOWS_H_PAGE_EXECUTE_READ, ref (old_protection)) == 0) {
+		printf("UntypedScript fatal -> failed to protect memory for heapfunction using VirtualProtect (returned 0)\n\tcalled VirtualProtect(0x%p, %d, 32, 0x%p)\n", mem, size, ref (old_protection))
+		printf("Old protection value=%d", old_protection)
+		abort()
+	}
+
+	return mem
+}
+
+const HeapFuncFree = (mem) => {
+	// VirtualFree(mem, 0, MEM_RELEASE)
+	if (VirtualFree(mem, 0, WINDOWS_H_MEM_RELEASE) == 0) {
+		printf("UntypedScript fatal -> failed to release memory for heapfunction using VirtualFree (returned 0)\n\tcalled VirtualFree(0x%p, 0, 32768)\n", mem)
+		abort()
+	}
+
+	return 0
+}
+
+export {
+	HeapFuncAlloc,
+	HeapFuncProtect,
+	HeapFuncFree
+}

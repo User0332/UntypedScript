@@ -1,0 +1,117 @@
+import { printf, memcpy } from "<libc>"
+import {
+	HeapFuncAlloc,
+	HeapFuncProtect,
+	HeapFuncFree
+} from "utils/win32/libheapfunc" // this is a precompiled object file since UTS doesn't support stdcalls yet
+
+const acquire_function = () => {
+	const outerstr = "Hello, World!"
+
+	return heapalloc (() => {
+		printf("outerstr=%s\n", outerstr)
+
+		let mystr = "something"
+
+		const innerfunc = localonly (() => {
+			printf("mystr=%s\n", mystr)
+		})
+
+		mystr = "ello!"
+
+		innerfunc()
+
+		return
+	})
+}
+
+const run_other_multilayered = () => {
+	let mystr = "Hello, World!"
+	
+	const func = localonly (() => {
+		printf("(othertests) mystr=%s\n", mystr)
+
+		const lcl = 4
+
+		return heapalloc (() => {
+			printf("(othertest -> heapalloc) mystr=%s\n", mystr)
+			printf("lcl=%d\n", lcl)
+		})
+	})
+
+	mystr = "changed string"
+
+	const otherfunc = func()
+
+	otherfunc()
+
+	HeapFuncFree(otherfunc)
+
+	return
+}
+
+const heapmulti = () => {
+	const outerstr = "abcd"
+
+	return heapalloc (() => {
+		printf("(heapmulti 1) outerstr=%s\n", outerstr)
+
+		const mystr = "something"
+
+		return heapalloc (() => {
+			printf("(heapmulti 2) mystr=%s outerstr=%s\n", mystr, outerstr)
+		})
+	})
+}
+
+const localonlymulti = () => {
+	const outerstr = "abcd"
+
+	const func = localonly (() => {
+		printf("(localonlymulti 1) outerstr=%s\n", outerstr)
+
+		const mystr = "something"
+
+		const inner = localonly (() => {
+			// we only print `mystr` because locals like `outerstr` 
+				// (variables from local scopes more than one localonly level up)
+				// are not guaranteed access in this scope
+			// ^ (will be added to UntypedScript standard soon)
+			printf("(localonlymulti 2) mystr=%s\n", mystr)
+		})
+
+		inner()
+	})
+
+	func()
+}
+
+const main = () => {
+	printf("here!\n")
+
+	const func = acquire_function()
+
+	func()
+
+	HeapFuncFree(func)
+
+	run_other_multilayered()
+
+	const newfunc = heapmulti()
+
+	const other = newfunc()
+
+	HeapFuncFree(newfunc)
+
+	printf("made it here!\n")
+
+	other()
+
+	HeapFuncFree(other)
+
+	localonlymulti()
+
+	return
+}
+
+export { main }

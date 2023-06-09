@@ -17,8 +17,16 @@ from json import load
 
 from typing import Union
 
+# these constants are for <Windows.h> VirtualAlloc/VirtualProtect/VirtualFree
+WINDOWS_H_PAGE_READWRITE = 0x04
+WINDOWS_H_PAGE_EXECUTE_READ = 0x20
+WINDOWS_H_MEM_COMMIT = 0x1000
+WINDOWS_H_MEM_RESERVE = 0x2000
+WINDOWS_H_MEM_COMMIT_RESERVE = WINDOWS_H_MEM_COMMIT | WINDOWS_H_MEM_RESERVE
+WINDOWS_H_MEM_RELEASE = 0x8000
+
 class Compiler:
-	def __init__(self, ast: dict, code: str, compiler_path: str, file_path: str, filename: str, optimize: int, structs: dict):
+	def __init__(self, ast: dict, code: str, compiler_path: str, file_path: str, filename: str, optimize: int, structs: dict, module: bool):
 		self.ast = ast
 		self.top = ""
 		self.text = "section .text"
@@ -29,7 +37,8 @@ class Compiler:
 		self.evaluator = SyntaxTreePreproccesor(ast)
 		self.source = code
 		self.structs: dict[str, list[str]] = structs
-		self.hidden_counter = 0
+		self.used_counters: list[int] = []
+		self.hidden_cached: int = None
 		self.optimize = optimize
 		self.compiler_path = compiler_path+'/..' if compiler_path.endswith("src") else compiler_path # this will point to the src folder, we want it to point to root proj directory
 		self.file_path = file_path
@@ -41,9 +50,29 @@ class Compiler:
 		self.in_namespace: list[str] = []
 		self.imported_names: list[str] = [] # for checking for imports for special features
 		self.collected_info: str = '\n'.join(f"Struct '{struct}' has members {members}" for struct, members in self.structs.items())+'\n' # currently just for debug to see how many optimizations are possible
+		
+		if not module:
+			self.dumpvar = f"dumpvar.0"
+			self.bssinstr(f"{self.dumpvar} resd 1")
 
 		# add more options - i.e. architecture from cmd line args
 		self.platform = "win32" if sys_platform == "win32" else "elf32"
+
+	@property
+	def hidden_counter(self):
+		if self.hidden_cached: return self.hidden_cached
+
+		i = 0
+
+		while i in self.used_counters: i+=1
+
+		self.hidden_cached = i
+
+		return i
+	
+	def reload_counter(self):
+		self.used_counters.append(self.hidden_cached)
+		self.hidden_cached = 0
 
 	@property
 	def asm(self) -> str:
@@ -101,9 +130,10 @@ class Compiler:
 			self.instr(func_code, unprocessed=func_compiler.text)
 
 		elif value.get("String Literal") is not None:
-			value = ', '.join(str(ord(c)) for c in value["String Literal"])
+			original = value["String Literal"]
+			value = ', '.join(str(ord(c)) for c in original)
 
-			self.datainstr(f"_{name} db {value}, 0")
+			self.datainstr(f"_{name} db {value}, 0 ; string {original!r}")
 
 			self.collected_info+=f"Global variable '{name}' is the string {value['String Literal']!r}\n"
 		else:
@@ -170,6 +200,9 @@ class Compiler:
 		if (not isfile(uts_mod) and isfile(lib_uts_mod)):
 			uts_mod = lib_uts_mod
 			modinfo = lib_modinfo
+			obj_mod = lib_obj_mod
+
+		if (not isfile(obj_mod) and isfile(lib_obj_mod)):
 			obj_mod = lib_obj_mod
 
 		if sys_platform == "win32":
@@ -458,6 +491,9 @@ class FunctionCompiler(Compiler):
 		self.params = params
 		self.localonly_offset_label = localonly_label
 		self.localonly_amount = 0 # to be set after object creation
+		self.ident = outer.hidden_counter
+		self.allocated_bytes_label = f"function.{self.ident}.ALLOCATED_BYTES"
+		outer.reload_counter()
 
 		arg_offset = 8
 		for param, dtype in params.items(): # reserve space for each arg
@@ -478,9 +514,7 @@ class FunctionCompiler(Compiler):
 		self.text = '\n'.join(self.text.splitlines()[:-1])
 		return instr
 
-	def generate_expression(self, expr: dict, getfuncaddr: bool=False, propassign: bool=False, passqual: str=None, noopt: bool=False):
-		key: str; node: dict
-
+	def generate_expression(self, expr: dict[str, dict], getfuncaddr: bool=False, propassign: bool=False, passqual: str=None, noopt: bool=False):
 		for key, node in expr.items():
 			if key.startswith("Binary Operation"):
 				op = key.removeprefix("Binary Operation ")
@@ -578,40 +612,48 @@ class FunctionCompiler(Compiler):
 				if _type == "localonly":
 					self.outer.collected_info+=f"  Local-only Anonymous Function (label with counter @ {self.outer.hidden_counter}) takes {params}\n"
 					
-					offset_name = f"localonly.arg_offset.NOT_THREAD_SAFE.{self.outer.hidden_counter}"
-					self.outer.datainstr(f"{offset_name} dd 0")
+					magicnum = self.outer.hidden_counter
 
+					offset_name = f"localonly.arg_offset.NOT_THREAD_SAFE.{magicnum}"
+					self.outer.datainstr(f"{offset_name} dd 0")
+					
 					func = FunctionCompiler(params, body, self.source, self.outer, offset_name)
 
 					last_offset = func.last_arg_offset
 
 					for symbol, info in tuple(self.symbols.symbols.items())[::-1]:
+						if (("ebp+eax+") in info["address"]) and ("localonly.arg_offset.NOT_THREAD_SAFE" in info["address"]): continue # from more than one `localonly` level up -> not guaranteed access
+						
+						addr = f"ebp+eax+{last_offset}+{self.allocated_bytes_label}-{self.allocated_bytes+4}"
+
 						func.symbols.declare(
 							symbol,
 							info["type"],
 							info["size"],
-							f"ebp+eax+{last_offset}",
+							addr,
 							f"mov eax, [{offset_name}]"
 						)
 
 						last_offset+=4
 
-					func.localonly_amount = last_offset-func.last_arg_offset
+					func.localonly_amount = (last_offset-func.last_arg_offset)+self.localonly_amount
 
-					func_name = f"anonymous.{self.outer.hidden_counter}"
+					func_name = f"anonymous.{magicnum}"
 					func_asm_body = func.traverse()
 					self.outer.instr(f"{func_name}:")
 					self.outer.instr(func_asm_body, unprocessed=func.text)
 
 					self.instr(f"mov eax, {func_name}")
 
-					self.outer.hidden_counter+=1
+					self.outer.reload_counter()
 				elif _type == "heapalloced":
 					self.outer.collected_info+=f"  Heap-allocated Anonymous Function (label with counter @ {self.outer.hidden_counter}) takes {params}\n"
 
-					heapvar_label = f"function.HEAP_ALLOCATED.{self.outer.hidden_counter}"
-					funcsize_label = f"size_of_function.HEAP_ALLOCATED.{self.outer.hidden_counter}"
-					total_mem_label = f"mem_req_for_function.HEAP_ALLOCATED.{self.outer.hidden_counter}"
+					magicnum = self.outer.hidden_counter
+
+					heapvar_label = f"function.HEAP_ALLOCATED.{magicnum}"
+					funcsize_label = f"size_of_function.HEAP_ALLOCATED.{magicnum}"
+					total_mem_label = f"mem_req_for_function.HEAP_ALLOCATED.{magicnum}"
 
 					self.outer.bssinstr(f"{heapvar_label} resd 1")
 
@@ -619,7 +661,11 @@ class FunctionCompiler(Compiler):
 
 					last_offset = 0
 
-					for symbol, info in self.symbols.symbols.items():
+					symbols_to_add = {
+						name: info for name, info in self.symbols.symbols.items() if (name != "ceci")
+					}
+
+					for symbol, info in symbols_to_add.items():
 						func.symbols.declare(
 							symbol,
 							info["type"],
@@ -638,44 +684,54 @@ class FunctionCompiler(Compiler):
 						beforeinstr=f"mov eax, [{heapvar_label}]"
 					)
 
-					func_name = f"anonymous.{self.outer.hidden_counter}"
+					func_name = f"anonymous.{magicnum}"
 					func_asm_body = func.traverse()
 					self.outer.instr(f"{func_name}:")
 
 					self.outer.instr(func_asm_body, unprocessed=func.text)
-					self.outer.instr(f"{funcsize_label} equ $ - {func_name}")
+					self.outer.instr(f"{funcsize_label} equ $-{func_name}")
 					self.outer.instr(f"{total_mem_label} equ {funcsize_label}+{last_offset}")
 
+
 					self.instr(f"push {total_mem_label}")
-					self.instr("call _malloc")
+					self.instr("lea eax, [_HeapFuncAlloc] ; no-optimize")
+					self.instr("call eax")
 					self.instr("add esp, 4")
 					self.instr(f"mov [{heapvar_label}], eax")
 
 					self.instr(f"push {funcsize_label}")
 					self.instr(f"push {func_name}")
 					self.instr(f"push DWORD [{heapvar_label}]")
-					self.instr("call _memcpy")
+					self.instr("lea eax, [_memcpy] ; no-optimize")
+					self.instr("call eax")
 					self.instr("add esp, 12")
 
-					for i, (symbol, info) in enumerate(self.symbols.symbols.items()):
+					for i, (symbol, info) in enumerate(symbols_to_add.items()):
 						end_of_func_offset = i*4
-
+						
+						self.instr(info["beforeinstr"])
 						self.instr(f"push DWORD [{info['address']}]")
 
 						self.instr(f"mov eax, [{heapvar_label}]")
 						self.instr(f"add eax, {funcsize_label}+{end_of_func_offset}")
 						self.instr("pop DWORD [eax]")
 
+					self.instr(f"push {total_mem_label}")
+					self.instr(f"push DWORD [{heapvar_label}]")
+					self.instr("lea eax, [_HeapFuncProtect] ; no-optimize")
+					self.instr("call eax")
+					self.instr("add esp, 8")
+
 					self.instr(f"mov eax, [{heapvar_label}]")
 
-					self.outer.hidden_counter+=1
+					self.outer.reload_counter()
 				else:
 					self.outer.collected_info+=f"  Anonymous Function (label with counter @ {self.outer.hidden_counter}) takes {params}\n"
 
 					func = FunctionCompiler(params, body, self.source, self.outer)
 					func_asm_body = func.traverse()
 					func_name = f"anonymous.{self.outer.hidden_counter}"
-					self.outer.hidden_counter+=1
+					self.outer.reload_counter()
 
 					self.outer.instr(f"{func_name}:")
 					self.outer.instr(func_asm_body, unprocessed=func.text)
@@ -684,11 +740,11 @@ class FunctionCompiler(Compiler):
 
 			elif key.startswith("String Literal"):
 				strname = f"string.{self.outer.hidden_counter}"
-				node = ', '.join(str(ord(c)) for c in node)
-				self.outer.datainstr(f"{strname} db {node}, 0")
-				self.instr(f"mov eax, {strname}")
+				chars = ', '.join(str(ord(c)) for c in node)
+				self.outer.datainstr(f"{strname} db {chars}, 0 ; string {node!r}")
+				self.instr(f"mov eax, {strname} ; string {node!r}")
 
-				self.outer.hidden_counter+=1
+				self.outer.reload_counter()
 			elif key.startswith("Function Call"):
 				self.call_func(node)
 			elif key.startswith("Array Literal"):
@@ -903,6 +959,7 @@ class FunctionCompiler(Compiler):
 			self.outer.collected_info+=f"  Local var '{name}' now has int/float value ({value['Numerical Constant']})\n"
 
 	def generate_prolog(self):
+		self.outer.datainstr(f"{self.allocated_bytes_label} equ {self.allocated_bytes}")
 		return f"push ebp\n\tmov ebp, esp\n\tsub esp, {self.allocated_bytes}"
 
 	def generate_epilog(self):
@@ -925,7 +982,7 @@ class FunctionCompiler(Compiler):
 		iflabel = f".if.{self.outer.hidden_counter}"
 		elselabel = f".else.{self.outer.hidden_counter}"
 		contlabel = f".cont.{self.outer.hidden_counter}"
-		self.outer.hidden_counter+=1
+		self.outer.reload_counter()
 
 		self.generate_expression(condition)
 		self.instr("cmp eax, 0") # then jump to labels from here
@@ -945,7 +1002,7 @@ class FunctionCompiler(Compiler):
 
 		whilelabel = f".while.{self.outer.hidden_counter}"
 		contlabel = f".cont.{self.outer.hidden_counter}"
-		self.outer.hidden_counter+=1
+		self.outer.reload_counter()
 
 		self.instr(f"{whilelabel}:")
 		self.generate_expression(condition)
@@ -1002,6 +1059,6 @@ class FunctionCompiler(Compiler):
 				throw(f"(fatal) UTSC 305: Unimplemented or Invalid AST Node '{key}'")
 				return
 			
-		if top is self.body: self.text = f"\t{self.generate_prolog()}\n\t{self.text}\n\t{self.generate_epilog()}"
+		if top is self.body: self.text = f"\t{self.generate_prolog()}\n\t{self.text}" # not need to add epilog; it should have already been added by a return statement
 
 		return self.process_text()

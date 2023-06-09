@@ -203,7 +203,7 @@ def main():
 	if warnings: printwarnings()
 	checkfailure()
 
-	compiler = Compiler(raw_ast, code, COMPILER_EXE_PATH, INPUT_FILE_PATH, file, compile_optimizations, parser.structs)
+	compiler = Compiler(raw_ast, code, COMPILER_EXE_PATH, INPUT_FILE_PATH, file, compile_optimizations, parser.structs, modularize)
 	try: asm = compiler.traverse()
 	except KeyError as e:
 		throw(f"UTSC 007: Invalid AST expression inserted! python: key not found: {e}")
@@ -308,7 +308,11 @@ def main():
 			[
 				config["gccPath"],
 				objname,
-				"-o", out
+				"-o", out,
+				"-pie",
+				"-fpie",
+				"-static",
+				"-static-libgcc"
 			]
 		)
 		except OSError as e:

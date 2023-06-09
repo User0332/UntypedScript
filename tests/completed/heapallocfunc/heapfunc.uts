@@ -23,7 +23,11 @@ const other = () => {
 }
 
 const main = () => {
-	other()(4)
+	const func = other()
+	
+	func(4)
+
+	free(func)
 }
 
 export { main }
