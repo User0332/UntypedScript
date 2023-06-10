@@ -86,7 +86,6 @@ At the moment (although the test conducted is very small), there seems to be a n
 	- Inline functions (`ideas/optimization/funcs`)
 	- Pure functions (`ideas/optimization/funcs`)
 	- Stack-allocated functions -> this will probably not become a feature, the idea was replaced with the `localonly` function feature
-- Error throwing that actually shows the correct line
 - Solve recursion errors in parser
 - Remove weird parser bugs that result in a lot of errors (ongoing, constant task)
 - Floats

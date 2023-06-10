@@ -19,6 +19,8 @@ Section pattern: `[name-of-module] (nXX)`, where `n` is the number that will pre
 
 `07` Invalid AST insert
 
+`08` Invalid warning number passed to `-s` or `-w`
+
 ## Lexer (1XX)
 
 `01` Invalid escape code in string

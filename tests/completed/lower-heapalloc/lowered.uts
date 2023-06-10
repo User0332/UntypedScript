@@ -1,0 +1,17 @@
+import { malloc,free } from "<libc>"
+
+const main = (() => {
+	const myvar = (let .temp0 = ((malloc)(16))
+	(deref ((.temp0)+((0)*(4)))) = (1)
+	(deref ((.temp0)+((1)*(4)))) = (2)
+	(deref ((.temp0)+((2)*(4)))) = (3)
+	(deref ((.temp0)+((3)*(4)))) = (4)
+	(.temp0))
+
+	(free)(myvar)
+
+	return (0)
+})
+
+export { main }
+

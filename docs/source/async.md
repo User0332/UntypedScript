@@ -1,6 +1,6 @@
-# Async
+# UntypedScript Async API
 
-UntypedScript currently provides one async library (`utils/win32/async` @ filepath (`/lib/utils/win32/async.uts`) -- only running on windows) which exposes simple functions to get things done in the background. To get started, import the `Async` namespace.
+UntypedScript currently provides one async library (`utils/win32/async` @ filepath (`/uts-lib/utils/win32/async.uts`) -- only running on windows) which exposes simple functions to get things done in the background. To get started, import the `Async` namespace.
 
 ```ts
 import namespace { Async } from "utils/win32/async"

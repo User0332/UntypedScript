@@ -15,9 +15,14 @@ Welcome to UntypedScript's documentation!
    variables
    types-and-assignments
    functions
+   structs
+   pointers
    scopes
    external-names
    namespaces
+   async
+   cli
+   output-fmts
    errors
 
 

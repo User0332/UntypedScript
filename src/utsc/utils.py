@@ -12,6 +12,9 @@ from sys import (
 errors = ""
 warnings = ""
 thrown = False
+WARNING_NUMBERS = ["001", "004", "008", "205", "314", "310"]
+OMIT_WARNINGS: list[str] = []
+ERR_WARNINGS = False
 #
 
 
@@ -63,7 +66,7 @@ def strgetline(string: str, target_index: int):
 
 
 #Error throwing functions
-def throw(message, code=""):
+def throw(message: str, code=""):
 	global errors
 	global thrown
 
@@ -73,8 +76,13 @@ def throw(message, code=""):
 def fmt_type(tok_type: str):
 	return f"<{tok_type.lower()}>"
 
-def warn(string, code=""):
+def warn(string: str, code=""):
 	global warnings
+
+	for warning in OMIT_WARNINGS:
+		if string.startswith(f"UTSC {warning}"): return
+
+	if ERR_WARNINGS: return throw(string, code)
 
 	warnings+=f"{YELLOW}WARNING: {string}{END}\n{code}"
 

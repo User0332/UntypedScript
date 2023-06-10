@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Compiler Output Formats &mdash; UntypedScript latest documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Compiler Errors/Warnings" href="errors.html" />
+    <link rel="prev" title="UntypedScript Compiler Command Line Options" href="cli.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            UntypedScript
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installing UntypedScript</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getstarted.html">Get Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="variables.html">Variables and Symbols</a></li>
+<li class="toctree-l1"><a class="reference internal" href="types-and-assignments.html">Variable Types and Assignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="functions.html">Anonymous Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structs.html">Structs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pointers.html">Pointers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="external-names.html">External Names</a></li>
+<li class="toctree-l1"><a class="reference internal" href="namespaces.html">Namespaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="async.html">UntypedScript Async API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">UntypedScript Compiler Command Line Options</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Compiler Output Formats</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#tokens">Tokens</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ast">AST</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#assembly">Assembly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#object-files-executables-and-dlls">Object Files, Executables, and DLLs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lowered-code">Lowered Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#structs-file">Structs File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-info">Module Info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compiler-collected-info">Compiler Collected Info</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Compiler Errors/Warnings</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">UntypedScript</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Compiler Output Formats</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/output-fmts.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="compiler-output-formats">
+<h1>Compiler Output Formats<a class="headerlink" href="#compiler-output-formats" title="Permalink to this heading"></a></h1>
+<p>This section covers all the file formats that can be passed to the <code class="docutils literal notranslate"><span class="pre">-o</span></code> (<code class="docutils literal notranslate"><span class="pre">--out</span></code>) option of the compiler to specify output filename.</p>
+<p>No matter which output format is specified, the compiler will still always invoke the lexer, parser, and compiler (assembly generator).</p>
+<section id="tokens">
+<h2>Tokens<a class="headerlink" href="#tokens" title="Permalink to this heading"></a></h2>
+<p>The compiler will output a list of tokens generated by the lexer if the compiler is asked to output a <code class="docutils literal notranslate"><span class="pre">.lst</span></code> file.</p>
+</section>
+<section id="ast">
+<h2>AST<a class="headerlink" href="#ast" title="Permalink to this heading"></a></h2>
+<p>The compiler will output the abstract syntax tree (in a JSON format) generated by the code if asked to output a <code class="docutils literal notranslate"><span class="pre">.json</span></code> file.</p>
+</section>
+<section id="assembly">
+<h2>Assembly<a class="headerlink" href="#assembly" title="Permalink to this heading"></a></h2>
+<p>The compiler will generate NASM-valid, x86, intel-syntax assembly (for output filenames ending in <code class="docutils literal notranslate"><span class="pre">.asm</span></code>).</p>
+</section>
+<section id="object-files-executables-and-dlls">
+<h2>Object Files, Executables, and DLLs<a class="headerlink" href="#object-files-executables-and-dlls" title="Permalink to this heading"></a></h2>
+<p>When asked to output an object file (<code class="docutils literal notranslate"><span class="pre">.o</span></code>), executable (<code class="docutils literal notranslate"><span class="pre">.exe</span></code>), or DLL (<code class="docutils literal notranslate"><span class="pre">.dll</span></code>), the compiler will first generate assembly, then invoke <code class="docutils literal notranslate"><span class="pre">nasm</span></code>, and then invoke <code class="docutils literal notranslate"><span class="pre">ld</span></code> or <code class="docutils literal notranslate"><span class="pre">gcc</span></code> to create the desired output. Note that DLLs aren’t actually guaranteed to work at the moment.</p>
+</section>
+<section id="lowered-code">
+<h2>Lowered Code<a class="headerlink" href="#lowered-code" title="Permalink to this heading"></a></h2>
+<p>Code lowering happens when the compiler is asked to output a <code class="docutils literal notranslate"><span class="pre">.uts</span></code> file. Instead of outputting the input file, the compiler will parse and generate AST for the input file, using the AST to boil down the code to its most basic UntypedScript form. When the compiler lowers code, the output is not guaranteed to be syntactically correct. It may be impossible to feed the ouput UntypedScript code back into the compiler because it generates code based off of AST, and some language features modify the AST in ways that would be illegal in normal code. An example is shown when a <code class="docutils literal notranslate"><span class="pre">heapalloc</span></code> statement is lowered:</p>
+<p>Input code:</p>
+<div class="highlight-js notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">malloc</span><span class="p">,</span><span class="w"> </span><span class="nx">free</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;&lt;libc&gt;&quot;</span><span class="w"></span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">main</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">myvar</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">heapalloc</span><span class="w"> </span><span class="p">([</span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">4</span><span class="p">])</span><span class="w"></span>
+
+<span class="w">    </span><span class="nx">free</span><span class="p">(</span><span class="nx">myvar</span><span class="p">)</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">export</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">main</span><span class="w"> </span><span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Lowered code:</p>
+<div class="highlight-js notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">malloc</span><span class="p">,</span><span class="nx">free</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;&lt;libc&gt;&quot;</span><span class="w"></span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">main</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">	</span><span class="kd">const</span><span class="w"> </span><span class="nx">myvar</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="p">.</span><span class="nx">temp0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">((</span><span class="nx">malloc</span><span class="p">)(</span><span class="mf">16</span><span class="p">))</span><span class="w"></span>
+<span class="w">	</span><span class="p">(</span><span class="nx">deref</span><span class="w"> </span><span class="p">((.</span><span class="nx">temp0</span><span class="p">)</span><span class="o">+</span><span class="p">((</span><span class="mf">0</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mf">4</span><span class="p">))))</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="mf">1</span><span class="p">)</span><span class="w"></span>
+<span class="w">	</span><span class="p">(</span><span class="nx">deref</span><span class="w"> </span><span class="p">((.</span><span class="nx">temp0</span><span class="p">)</span><span class="o">+</span><span class="p">((</span><span class="mf">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mf">4</span><span class="p">))))</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="mf">2</span><span class="p">)</span><span class="w"></span>
+<span class="w">	</span><span class="p">(</span><span class="nx">deref</span><span class="w"> </span><span class="p">((.</span><span class="nx">temp0</span><span class="p">)</span><span class="o">+</span><span class="p">((</span><span class="mf">2</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mf">4</span><span class="p">))))</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="mf">3</span><span class="p">)</span><span class="w"></span>
+<span class="w">	</span><span class="p">(</span><span class="nx">deref</span><span class="w"> </span><span class="p">((.</span><span class="nx">temp0</span><span class="p">)</span><span class="o">+</span><span class="p">((</span><span class="mf">3</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mf">4</span><span class="p">))))</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="mf">4</span><span class="p">)</span><span class="w"></span>
+<span class="w">	</span><span class="p">(.</span><span class="nx">temp0</span><span class="p">))</span><span class="w"></span>
+
+<span class="w">	</span><span class="p">(</span><span class="nx">free</span><span class="p">)(</span><span class="nx">myvar</span><span class="p">)</span><span class="w"></span>
+
+<span class="w">	</span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="mf">0</span><span class="p">)</span><span class="w"></span>
+<span class="p">})</span><span class="w"></span>
+
+<span class="k">export</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">main</span><span class="w"> </span><span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Additionally, the code lowerer does not always support all features (meaning output code may not actually be semantically the same as input code), and is usually the last to be updated (if it is). The code lowerer is merely a look into some compiler internals.</p>
+</section>
+<section id="structs-file">
+<h2>Structs File<a class="headerlink" href="#structs-file" title="Permalink to this heading"></a></h2>
+<p>An output filename ending in <code class="docutils literal notranslate"><span class="pre">.structs</span></code> will dump a JSON object of struct data (from the current and imported files) into the output file.</p>
+</section>
+<section id="module-info">
+<h2>Module Info<a class="headerlink" href="#module-info" title="Permalink to this heading"></a></h2>
+<p>When asked to output a <code class="docutils literal notranslate"><span class="pre">.modinfo</span></code> file, the compiler will generate a list of exported names and module data from import <code class="docutils literal notranslate"><span class="pre">.uts</span></code> modules (in a JSON format). Note that these files are usually generated as tempfiles for the compiler to help it with compiling/analyzing imports in <code class="docutils literal notranslate"><span class="pre">.uts</span></code> files.</p>
+</section>
+<section id="compiler-collected-info">
+<h2>Compiler Collected Info<a class="headerlink" href="#compiler-collected-info" title="Permalink to this heading"></a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">.info</span></code> output filename will have the compiler dump some of its collected info about the compilation into the file. This is mostly useless information and still for a feature that is in development (having the compiler collect more info to provide potential information).</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cli.html" class="btn btn-neutral float-left" title="UntypedScript Compiler Command Line Options" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="errors.html" class="btn btn-neutral float-right" title="Compiler Errors/Warnings" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Carl Furtado.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

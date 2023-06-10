@@ -6,6 +6,7 @@ UTSC (0XX)
 5 Parser ran into Python error (specific to implementation, hopefully fixed in the future)
 6 Config Error
 7 Invalid AST insert
+8 Invalid warning number
 
 Lexer (1XX)
 1 Invalid escape code in string

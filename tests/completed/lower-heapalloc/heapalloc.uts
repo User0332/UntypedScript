@@ -1,0 +1,9 @@
+import { malloc, free } from "<libc>"
+
+const main = () => {
+    const myvar = heapalloc ([1, 2, 3, 4])
+
+    free(myvar)
+}
+
+export { main }
