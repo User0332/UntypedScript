@@ -36,5 +36,6 @@ Compiler (3XX)
 11 Special or exceptional error/warning
 12 Tried to import a namespace from a non-UntypedScript file
 13 Cannot assign to expression
+14 Invalid function type
 
 Other Modules (4XX)

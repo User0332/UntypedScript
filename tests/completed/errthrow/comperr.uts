@@ -1,0 +1,5 @@
+const main = localonly (() => {
+    print(myvar)
+})
+
+export { main }

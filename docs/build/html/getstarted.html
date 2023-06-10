@@ -18,7 +18,9 @@
         <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Variables and Symbols" href="variables.html" />
+    <link rel="prev" title="Installing UntypedScript" href="installation.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -40,11 +42,18 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <!-- Local TOC -->
-              <div class="local-toc"><ul>
-<li><a class="reference internal" href="#">Get Started</a></li>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installing UntypedScript</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Get Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="variables.html">Variables and Symbols</a></li>
+<li class="toctree-l1"><a class="reference internal" href="types-and-assignments.html">Variable Types and Assignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="functions.html">Anonymous Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="external-names.html">External Names</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Compiler Errors/Warnings</a></li>
 </ul>
-</div>
+
         </div>
       </div>
     </nav>
@@ -91,7 +100,7 @@
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>utsc -e hello.uts -O2
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">-e</span></code> option specifies to the compiler that we want the output to be an executable format (win32 by default, win32 is also the only format currently supported). The compiler will run <code class="docutils literal notranslate"><span class="pre">nasm</span></code>, <code class="docutils literal notranslate"><span class="pre">gcc</span></code>, and <code class="docutils literal notranslate"><span class="pre">ld</span></code> in the background to create an exectuable for us. Next, we pass the filename of the program that we want to compile, and lastly we’ll pass an <code class="docutils literal notranslate"><span class="pre">-O2</span></code> flag to try to optimize the file as much as possible. For more info on command-line options, you can type the command <code class="docutils literal notranslate"><span class="pre">utsc</span> <span class="pre">-h</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">-e</span></code> option specifies to the compiler that we want the output to be an executable format (win32 by default, win32 is also the only format currently supported). The compiler will run <code class="docutils literal notranslate"><span class="pre">nasm</span></code>, <code class="docutils literal notranslate"><span class="pre">gcc</span></code>, and <code class="docutils literal notranslate"><span class="pre">ld</span></code> in the background to create an exectuable for us. We can mimic the same behavior by passing <code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">hello.exe</span></code>, as <code class="docutils literal notranslate"><span class="pre">utsc</span></code> will infer the output file format from the extension. Next, we pass the filename of the program that we want to compile, and lastly we’ll pass an <code class="docutils literal notranslate"><span class="pre">-O2</span></code> flag to try to optimize the file as much as possible. For more info on command-line options, you can type the command <code class="docutils literal notranslate"><span class="pre">utsc</span> <span class="pre">-h</span></code>.</p>
 <p>Lastly, run the generated <code class="docutils literal notranslate"><span class="pre">hello.exe</span></code> file.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">utsc</span> <span class="o">-</span><span class="n">e</span> <span class="n">hello</span><span class="o">.</span><span class="n">uts</span> <span class="o">-</span><span class="n">O2</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="o">./</span><span class="n">hello</span><span class="o">.</span><span class="n">exe</span>
@@ -105,7 +114,10 @@
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installing UntypedScript" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="variables.html" class="btn btn-neutral float-right" title="Variables and Symbols" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
 
   <hr/>
 

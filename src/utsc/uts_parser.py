@@ -50,9 +50,9 @@ class StringLiteral(Node):
 
 class BinOpNode(Node):
 	def __init__(self, left: Node, op: str, right: Node):
-		self.left = left
+		self.left = left if left else "null"
 		self.value = op
-		self.right = right
+		self.right = right if right else "null"
 
 	def __repr__(self):
 		return f'{{ "Binary Operation {self.value}" : [{self.left}, {self.right}] }}'
@@ -172,7 +172,7 @@ class AnonymousFunctionNode(Node):
 	LOCALLY_EXPOSED = "localonly"
 	HEAP_ALLOCATED = "heapalloced"
 
-	def __init__(self, params: dict[str, str], body: dict, flag: str=NORMAL):
+	def __init__(self, params: dict[str, str], body: dict, idx: int, flag: str=NORMAL):
 		self.params = dumps(params)
 		
 		try:
@@ -183,13 +183,14 @@ class AnonymousFunctionNode(Node):
 
 		self.body = dumps(body)
 		self.flag = flag
+		self.idx = idx
 	
 	def __repr__(self):
 		if self.flag == AnonymousFunctionNode.HEAP_ALLOCATED:
 			# obviously change these later and take platform into account when using these win32 functions (use mmap instead)
-			return f'{{ "Verify-Imported0": ["HeapFuncAlloc", "heap-allocated functions"], "Verify-Imported1": ["HeapFuncProtect", "heap-allocated functions"], "Verify-Imported1": ["HeapFuncFree", "heap-allocated functions"], "Verify-Imported2": ["memcpy", "heap-allocated functions"], "Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}, "type": "{self.flag}" }} }}'
+			return f'{{ "Verify-Imported0": ["HeapFuncAlloc", "heap-allocated functions"], "Verify-Imported1": ["HeapFuncProtect", "heap-allocated functions"], "Verify-Imported1": ["HeapFuncFree", "heap-allocated functions"], "Verify-Imported2": ["memcpy", "heap-allocated functions"], "Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}, "type": "{self.flag}", "index": {self.idx} }} }}'
 		
-		return f'{{"Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}, "type": "{self.flag}" }} }}'
+		return f'{{"Anonymous Function" : {{ "parameters" : {self.params}, "body" : {self.body}, "type": "{self.flag}", "index": {self.idx} }} }}'
 
 class NamespaceDeclarationNode(Node):
 	def __init__(self, name: str, body: dict):
@@ -559,6 +560,12 @@ class Parser:
 
 			right = func_b()
 			
+			if right is None: # must be a newline, backtrack one to get the right line
+				code = get_code(self.code, self.current.idx-1)
+
+				throw("UTSC 203: Expected expression, got <newline>", code)
+
+			
 			left = BinOpNode(left, op, right)		
 		
 		return left
@@ -704,6 +711,8 @@ class Parser:
 
 		if current.type == "IDENTIFIER":
 			self.advance()
+
+			index = self.current.idx
 			
 			if self.current.value == '=': # this needs to be in expr()
 				self.advance()
@@ -718,7 +727,7 @@ class Parser:
 					self.advance()
 					return UnimplementedNode()
 				else:
-					return VariableAssignmentNode(current.value, expr, self.current.idx)
+					return VariableAssignmentNode(current.value, expr, index)
 			if self.current.value in ('+', '-', '/', '*'): # += -= *= /= assignment
 				op = self.current.value
 				self.advance()
@@ -731,7 +740,7 @@ class Parser:
 
 						code = get_code(self.code, self.current.idx)
 						
-						throw(f"UTSC 203: Expected expression after assignment operator '{op.value}=', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
+						throw(f"UTSC 203: Expected expression after assignment operator '{op}=', got {fmt_type(Token(self.tokens[self.idx+1]).type)}", code)
 						
 						self.advance()
 						return UnimplementedNode()
@@ -743,7 +752,7 @@ class Parser:
 								op,
 								expr
 							),
-							self.current.idx
+							index
 						)
 
 				self.decrement() # back up to operator token
@@ -796,6 +805,8 @@ class Parser:
 
 		if current.value == '(':
 			self.advance()
+
+			index = self.current.idx+1 # make this past the opening arg brace
 
 			if (self.current.type in ("IDENTIFIER", "STRUCT")) or (self.current.value == ')'):
 				fallback_idx = self.current.idx
@@ -863,7 +874,7 @@ class Parser:
 						f"Return Statement": loads(str(expr))
 					}
 
-				return AnonymousFunctionNode(parameters, func_body)
+				return AnonymousFunctionNode(parameters, func_body, index)
 
 			else:
 				return self.fallback_paren_expr(self.current.idx)
@@ -1246,6 +1257,7 @@ class Parser:
 				return UnimplementedNode()
 
 			name = self.current.value
+			index = self.current.idx
 			self.advance()
 
 			if self.current.type == "NEWLINE":
@@ -1275,7 +1287,7 @@ class Parser:
 					self.advance()
 					return UnimplementedNode()
 				else:
-					return VariableDefinitionNode(vartype, name, expr, self.current.idx)
+					return VariableDefinitionNode(vartype, name, expr, index)
 			else:
 				code = get_code(self.code, self.current.idx)
 				

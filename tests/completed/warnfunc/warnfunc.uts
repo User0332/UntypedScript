@@ -1,0 +1,11 @@
+// both funcs will throw warnings and compile as normal functions
+
+const main = localonly (() => {
+    return 0
+})
+
+const otherfunc = heapalloc(() => {
+
+})
+
+export { main }

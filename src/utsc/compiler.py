@@ -115,6 +115,11 @@ class Compiler:
 		if value.get("Anonymous Function") is not None:
 			value = value["Anonymous Function"]
 
+			if value["type"] != "normal":
+				code = get_code(self.source, value["index"])
+
+				warn(f"UTSC 314: tried to create {value['type']} function in global scope, defaulting to normal function", code)
+
 			func_compiler = FunctionCompiler(
 				value["parameters"],
 				value["body"],

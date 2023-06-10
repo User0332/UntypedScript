@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Search &mdash; UntypedScript latest documentation</title>
+  <title>Scopes &mdash; UntypedScript latest documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-    
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -17,10 +17,10 @@
         <script src="_static/doctools.js"></script>
         <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/js/theme.js"></script>
-    <script src="_static/searchtools.js"></script>
-    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="#" /> 
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="External Names" href="external-names.html" />
+    <link rel="prev" title="Anonymous Functions" href="functions.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -35,7 +35,7 @@
             UntypedScript
           </a>
 <div role="search">
-  <form id="rtd-search-form" class="wy-form" action="#" method="get">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -43,15 +43,22 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installing UntypedScript</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getstarted.html">Get Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="variables.html">Variables and Symbols</a></li>
 <li class="toctree-l1"><a class="reference internal" href="types-and-assignments.html">Variable Types and Assignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="functions.html">Anonymous Functions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Scopes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#global-scope">Global Scope</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#local-scope">Local Scope</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#local-only-function-scope">Local-only Function Scope</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#heap-allocated-function-scope">Heap-allocated Function Scope</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="external-names.html">External Names</a></li>
-<li class="toctree-l1"><a class="reference internal" href="namespaces.html">Namespaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="errors.html">Compiler Errors/Warnings</a></li>
 </ul>
 
@@ -69,8 +76,9 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Search</li>
+      <li class="breadcrumb-item active">Scopes</li>
       <li class="wy-breadcrumbs-aside">
+            <a href="_sources/scopes.md.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -78,22 +86,29 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <noscript>
-  <div id="fallback" class="admonition warning">
-    <p class="last">
-      Please activate JavaScript to enable the search functionality.
-    </p>
-  </div>
-  </noscript>
+  <section id="scopes">
+<h1>Scopes<a class="headerlink" href="#scopes" title="Permalink to this heading"></a></h1>
+<section id="global-scope">
+<h2>Global Scope<a class="headerlink" href="#global-scope" title="Permalink to this heading"></a></h2>
+</section>
+<section id="local-scope">
+<h2>Local Scope<a class="headerlink" href="#local-scope" title="Permalink to this heading"></a></h2>
+<section id="local-only-function-scope">
+<h3>Local-only Function Scope<a class="headerlink" href="#local-only-function-scope" title="Permalink to this heading"></a></h3>
+</section>
+<section id="heap-allocated-function-scope">
+<h3>Heap-allocated Function Scope<a class="headerlink" href="#heap-allocated-function-scope" title="Permalink to this heading"></a></h3>
+</section>
+</section>
+</section>
 
-  
-  <div id="search-results">
-  
-  </div>
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="functions.html" class="btn btn-neutral float-left" title="Anonymous Functions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="external-names.html" class="btn btn-neutral float-right" title="External Names" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
 
   <hr/>
 
@@ -115,14 +130,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-  <script>
-    jQuery(function() { Search.loadIndex("searchindex.js"); });
-  </script>
-  
-  <script id="searchindexloader"></script>
-   
-
+  </script> 
 
 </body>
 </html>

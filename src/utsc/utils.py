@@ -41,25 +41,24 @@ def formatline(line: str, idx: int, linenum: int):
 		if i == idx:
 			break
 
-	linenolen = len(lineno)+1
+	linenolen = len(lineno)-1
 	code+=(" "*linenolen)+"^^^\n"
 	return code
 
-def strgetline(string: str, index: int):
+def strgetline(string: str, target_index: int):
 	current_idx = 0
+
 	for i, line in enumerate(string.splitlines()):
-		for j in range(0, len(line)-1):
-			if current_idx == index:
-				return [line, j, i+1]
+		for j in range(len(line)):
+			if current_idx == target_index: return [line, j, i+1]
+
 			current_idx+=1
+
+		if current_idx == target_index: return [line, len(line)-1, i+1]
 
 		current_idx+=1
 
-
-		if current_idx == index:
-			return [line, j+1, i+1]
-
-	return ["", 0, 0]
+	return ["<<<untypedscript: could not locate code>>>", 0, 0]
 #
 
 

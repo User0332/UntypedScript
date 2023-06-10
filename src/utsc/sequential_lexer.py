@@ -301,12 +301,14 @@ class Lexer:
 			return "line"
 		
 		if char == '*':
+			start = self.i
+
 			while 1:
 				self.i+=1
 
 				try: char = self.code[self.i]
 				except IndexError:
-					code = get_code(self.code, self.i-2)
+					code = get_code(self.code, start)
 
 					throw("UTSC 102: Block comment was not closed - terminating tokenization", code)
 					raise SigTermTokenization()

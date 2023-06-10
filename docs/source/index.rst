@@ -7,12 +7,17 @@ Welcome to UntypedScript's documentation!
 =========================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
    installation
    getstarted
    variables
+   types-and-assignments
+   functions
+   scopes
+   external-names
+   namespaces
    errors
 
 

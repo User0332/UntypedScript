@@ -49,4 +49,9 @@ import namespace { OtherNamespace.NestedNamespace } from "path/to/module-without
 ```
 
 ## Structs
-Since structs don't actually exist in generated assembly code, they are also a bit different. As of now, there is no struct import/export system, but it will be created in the future.
+
+Structs do not need an `export` statement; they are all automatically exported. Like all other imports, structs can be imported with a lookalike statement:
+
+```ts
+import struct { Person } from "person-struct" // imports struct 'Person' from person-struct.uts
+```
